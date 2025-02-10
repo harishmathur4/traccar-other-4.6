@@ -148,7 +148,218 @@ This approach ensures scalability while keeping your system modular and maintain
 
 
 
+To test the components in your hexagonal architecture effectively, you should use JUnit 5, Mockito, and H2 (for database tests). Here's how you can structure the tests for each layer.
 
+1. Testing the Kafka Consumer (Inbound Adapter)
+Since Kafka is external, we mock its behavior using Mockito.
+
+Test Setup for KafkaTaxConsumer
+java
+Copy
+Edit
+@ExtendWith(MockitoExtension.class)
+class KafkaTaxConsumerTest {
+
+    @InjectMocks
+    private KafkaTaxConsumer kafkaTaxConsumer;
+
+    @Mock
+    private TaxProcessingService taxProcessingService;
+
+    @Test
+    void shouldProcessMessage_whenReceivedFromKafka() {
+        // Given
+        TaxProtoMessage protoMessage = TaxProtoMessage.newBuilder().setId("123").build();
+        TaxEntity taxEntity = new TaxEntity("123");
+
+        // When
+        kafkaTaxConsumer.consume(protoMessage);
+
+        // Then
+        verify(taxProcessingService, times(1)).processTaxEntity(any(TaxEntity.class));
+    }
+}
+✅ Mocks TaxProcessingService to avoid calling real implementations.
+✅ Verifies that the service was called once with any TaxEntity.
+
+2. Testing the Application Service (TaxProcessingService)
+Here, we mock the EnrichmentService since it's an external dependency.
+
+Test Setup for TaxProcessingService
+java
+Copy
+Edit
+@ExtendWith(MockitoExtension.class)
+class TaxProcessingServiceTest {
+
+    @InjectMocks
+    private TaxProcessingService taxProcessingService;
+
+    @Mock
+    private EnrichmentService enrichmentService;
+
+    @Test
+    void shouldCallEnrichmentService_whenProcessingTaxEntity() {
+        // Given
+        TaxEntity taxEntity = new TaxEntity("123");
+
+        // When
+        taxProcessingService.processTaxEntity(taxEntity);
+
+        // Then
+        verify(enrichmentService, times(1)).enrich(taxEntity);
+    }
+}
+✅ Mocks EnrichmentService to isolate business logic.
+✅ Verifies that enrich() was called exactly once.
+
+3. Testing the Cache Adapter (CaffeineCacheAdapter)
+We mock the Oracle DB repository to prevent actual database calls.
+
+Test Setup for CaffeineCacheAdapter
+java
+Copy
+Edit
+@ExtendWith(MockitoExtension.class)
+class CaffeineCacheAdapterTest {
+
+    @InjectMocks
+    private CaffeineCacheAdapter cacheAdapter;
+
+    @Mock
+    private OracleTaxRepository taxRepository;
+
+    @Mock
+    private Cache<String, TaxEntity> cache;
+
+    @Test
+    void shouldFetchFromCacheBeforeDB() {
+        // Given
+        TaxEntity cachedEntity = new TaxEntity("123");
+        when(cache.getIfPresent("123")).thenReturn(cachedEntity);
+
+        TaxEntity taxEntity = new TaxEntity("123");
+
+        // When
+        cacheAdapter.enrich(taxEntity);
+
+        // Then
+        verify(taxRepository, never()).findById(anyString()); // DB should not be called
+        verify(cache, times(1)).getIfPresent("123");
+    }
+
+    @Test
+    void shouldFetchFromDBIfCacheMisses() {
+        // Given
+        TaxEntity dbEntity = new TaxEntity("123");
+        when(cache.getIfPresent("123")).thenReturn(null);
+        when(taxRepository.findById("123")).thenReturn(dbEntity);
+
+        TaxEntity taxEntity = new TaxEntity("123");
+
+        // When
+        cacheAdapter.enrich(taxEntity);
+
+        // Then
+        verify(taxRepository, times(1)).findById("123");
+        verify(cache, times(1)).put("123", dbEntity);
+    }
+}
+✅ Tests both cache hit and cache miss scenarios.
+✅ Ensures DB is only called when necessary.
+
+4. Testing Oracle DB Adapter (OracleTaxRepository) with H2
+For database testing, we use H2 in-memory database.
+
+Test Setup for OracleTaxRepository
+java
+Copy
+Edit
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(OracleTaxRepository.class)
+class OracleTaxRepositoryTest {
+
+    @Autowired
+    private OracleTaxRepository taxRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void setup() {
+        jdbcTemplate.execute("INSERT INTO tax_entity (id, name) VALUES ('123', 'TestTax')");
+    }
+
+    @Test
+    void shouldFetchDataFromDatabase() {
+        // When
+        TaxEntity entity = taxRepository.findById("123");
+
+        // Then
+        assertNotNull(entity);
+        assertEquals("123", entity.getId());
+        assertEquals("TestTax", entity.getName());
+    }
+}
+✅ Uses H2 for an in-memory database environment.
+✅ Verifies that data is correctly fetched from DB.
+
+5. Integration Testing the Kafka Flow
+We use Testcontainers to spin up an actual Kafka broker for integration testing.
+
+Test Setup for Kafka Integration
+java
+Copy
+Edit
+@Testcontainers
+@SpringBootTest
+class KafkaIntegrationTest {
+
+    @Container
+    public static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:latest"));
+
+    @Autowired
+    private KafkaTemplate<String, TaxProtoMessage> kafkaTemplate;
+
+    @Autowired
+    private TaxProcessingService taxProcessingService;
+
+    @DynamicPropertySource
+    static void kafkaProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+    }
+
+    @Test
+    void shouldConsumeAndProcessMessage() {
+        // Given
+        TaxProtoMessage message = TaxProtoMessage.newBuilder().setId("123").build();
+
+        // When
+        kafkaTemplate.send("ABC", message);
+
+        // Then
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            verify(taxProcessingService, times(1)).processTaxEntity(any(TaxEntity.class));
+        });
+    }
+}
+✅ Uses Testcontainers to run a real Kafka instance.
+✅ Verifies end-to-end message flow.
+
+6. Running Tests in CI/CD
+Unit tests run with JUnit + Mockito.
+H2 DB tests run without needing a real Oracle DB.
+Kafka integration tests use Testcontainers.
+CI/CD Pipeline should:
+Run mvn test for unit tests.
+Use Docker/Testcontainers for Kafka tests.
+H2 ensures DB independence.
+Final Thoughts
+Unit Tests: Ensure individual components work.
+Mocking: Prevents unnecessary dependencies.
+H2 & Testcontainers: Enable realistic but isolated testing.
+CI/CD Friendly: Works in pipelines with minimal external dependencies.
 
 
 
