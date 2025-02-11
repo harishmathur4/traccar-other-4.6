@@ -363,3 +363,1500 @@ CI/CD Friendly: Works in pipelines with minimal external dependencies.
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Set preparedstatement in statement dynamically
+ChatGPT said:
+How to Set PreparedStatement Parameters Dynamically in Java?
+To dynamically set parameters in a PreparedStatement, you can use reflection, maps, or lists to handle variable-length parameters.
+
+✅ Best Approach: Use a Generic Utility Method
+This method:
+
+Accepts a PreparedStatement and a list of parameters.
+Iterates over parameters and sets them dynamically based on their types.
+Handles different data types automatically.
+🚀 Implementation: Generic Dynamic Parameter Setter
+java
+Copy
+Edit
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
+
+public class DynamicPreparedStatement {
+    public static void main(String[] args) {
+        String sql = "INSERT INTO users (id, name, age, email) VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            // Example: Setting parameters dynamically
+            setPreparedStatementParams(pstmt, List.of(1, "John Doe", 30, "john@example.com"));
+            
+            pstmt.executeUpdate();
+            System.out.println("Data inserted successfully.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void setPreparedStatementParams(PreparedStatement pstmt, List<Object> params) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            Object param = params.get(i);
+            if (param instanceof Integer) {
+                pstmt.setInt(i + 1, (Integer) param);
+            } else if (param instanceof String) {
+                pstmt.setString(i + 1, (String) param);
+            } else if (param instanceof Double) {
+                pstmt.setDouble(i + 1, (Double) param);
+            } else if (param instanceof Boolean) {
+                pstmt.setBoolean(i + 1, (Boolean) param);
+            } else if (param instanceof Long) {
+                pstmt.setLong(i + 1, (Long) param);
+            } else {
+                pstmt.setObject(i + 1, param);  // Default handler for other types
+            }
+        }
+    }
+
+    private static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection("jdbc:mysql://localhost:3306/testdb", "root", "password");
+    }
+}
+🚀 Explanation
+setPreparedStatementParams() dynamically binds parameters using List<Object>.
+Each parameter is checked for type (Integer, String, Boolean, etc.) and set accordingly.
+No need to manually write pstmt.setXXX() for each query.
+✅ Alternative: Using a Map Instead of List
+If you need named parameters instead of positional parameters, use a map.
+
+🚀 Using Map<Integer, Object>
+java
+Copy
+Edit
+public static void setPreparedStatementParams(PreparedStatement pstmt, Map<Integer, Object> params) throws SQLException {
+    for (Map.Entry<Integer, Object> entry : params.entrySet()) {
+        int index = entry.getKey();
+        Object param = entry.getValue();
+        
+        if (param instanceof Integer) {
+            pstmt.setInt(index, (Integer) param);
+        } else if (param instanceof String) {
+            pstmt.setString(index, (String) param);
+        } else if (param instanceof Double) {
+            pstmt.setDouble(index, (Double) param);
+        } else {
+            pstmt.setObject(index, param);
+        }
+    }
+}
+🔥 Example Usage
+java
+Copy
+Edit
+Map<Integer, Object> paramMap = Map.of(
+    1, 1, 
+    2, "John Doe", 
+    3, 30, 
+    4, "john@example.com"
+);
+setPreparedStatementParams(pstmt, paramMap);
+✅ Allows setting parameters dynamically by index.
+✅ Useful when parameters are not in sequential order.
+
+🚀 Summary: Best Approach
+Method	Best For	Code Simplicity	Use Case
+List-based (List<Object>)	Best for sequential parameters	✅ Simple	SQL queries with ordered parameters
+Map-based (Map<Integer, Object>)	Best for named parameters	🔄 Slightly complex	When parameter order may change
+🚀 Next Steps
+Would you like: ✅ Batch execution support for multiple inserts?
+✅ Handling NULL values dynamically?
+✅ Using Reflection to auto-map object fields?
+
+Let me know! 🚀📌
+
+You said:
+If a class implements 2 interfaces than how to autowire the object to access all the implemented methods
+ChatGPT said:
+How to Autowire a Class That Implements Multiple Interfaces in Spring Boot?
+If a class implements two or more interfaces, and you want to autowire it to access methods from both interfaces, you have multiple ways to achieve this in Spring.
+
+🚀 Solution 1: Use @Primary to Avoid Ambiguity
+If a class implements two interfaces, Spring may not know which bean to inject.
+Using @Primary ensures that one specific implementation is injected by default.
+
+🔹 Example
+java
+Copy
+Edit
+public interface ServiceA {
+    void methodA();
+}
+
+public interface ServiceB {
+    void methodB();
+}
+✅ Implementation Class (Implements Both Interfaces)
+java
+Copy
+Edit
+import org.springframework.stereotype.Service;
+
+@Service
+@Primary  // This ensures this bean is injected when both interfaces are used
+public class CombinedService implements ServiceA, ServiceB {
+    @Override
+    public void methodA() {
+        System.out.println("Executing methodA()");
+    }
+
+    @Override
+    public void methodB() {
+        System.out.println("Executing methodB()");
+    }
+}
+✅ Autowiring Using @Autowired
+java
+Copy
+Edit
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyComponent {
+    private final ServiceA serviceA;
+    private final ServiceB serviceB;
+
+    @Autowired
+    public MyComponent(ServiceA serviceA, ServiceB serviceB) {
+        this.serviceA = serviceA;
+        this.serviceB = serviceB;
+    }
+
+    public void execute() {
+        serviceA.methodA();
+        serviceB.methodB();
+    }
+}
+✔ Spring injects the CombinedService for both ServiceA and ServiceB.
+✔ No ambiguity since @Primary is used.
+
+🚀 Solution 2: Use @Qualifier to Specify Implementation
+If multiple beans implement the same interface, use @Qualifier to specify which bean to inject.
+
+✅ Modify Implementation Class
+java
+Copy
+Edit
+@Service("customService") // Provide a bean name
+public class CombinedService implements ServiceA, ServiceB {
+    @Override
+    public void methodA() { System.out.println("Executing methodA()"); }
+    @Override
+    public void methodB() { System.out.println("Executing methodB()"); }
+}
+✅ Autowire with @Qualifier
+java
+Copy
+Edit
+@Component
+public class MyComponent {
+    private final ServiceA serviceA;
+    private final ServiceB serviceB;
+
+    @Autowired
+    public MyComponent(@Qualifier("customService") ServiceA serviceA,
+                       @Qualifier("customService") ServiceB serviceB) {
+        this.serviceA = serviceA;
+        this.serviceB = serviceB;
+    }
+
+    public void execute() {
+        serviceA.methodA();
+        serviceB.methodB();
+    }
+}
+✔ This explicitly tells Spring to inject the CombinedService bean.
+
+🚀 Solution 3: Inject the Concrete Class Instead
+If only one implementation exists, you can directly inject the concrete class.
+
+java
+Copy
+Edit
+@Component
+public class MyComponent {
+    private final CombinedService combinedService;
+
+    @Autowired
+    public MyComponent(CombinedService combinedService) {
+        this.combinedService = combinedService;
+    }
+
+    public void execute() {
+        combinedService.methodA();
+        combinedService.methodB();
+    }
+}
+✔ This ensures you can call all methods from both interfaces.
+✔ Not ideal if you need flexibility for multiple implementations.
+
+🚀 Summary: Best Approach
+Method	Best When	How?
+@Primary (Solution 1)	Single implementation is preferred	Add @Primary to CombinedService
+@Qualifier (Solution 2)	Multiple implementations exist	Use @Qualifier("beanName") when injecting
+Inject Concrete Class (Solution 3)	Only one implementation exists, and flexibility isn’t needed	Inject CombinedService directly
+🚀 Next Steps
+Would you like: ✅ A test case to verify injection in Spring Boot?
+✅ Support for multiple implementations dynamically?
+✅ Using @Bean instead of @Service for more control?
+
+Let me know! 🚀📌
+
+You said:
+I have a list of dto nd from that i beed to create list of every property think name list age list and city list is it possible in a single iteration 
+ChatGPT said:
+How to Extract Multiple Property Lists from a List of DTOs in a Single Iteration?
+Yes! You can extract multiple lists (e.g., name list, age list, city list) from a list of DTOs in a single iteration using Java Streams or a simple loop.
+
+🚀 Best Approach: Using Streams with Collectors.toCollection()
+This method:
+
+Extracts all properties in one iteration.
+Uses forEach() to populate multiple lists simultaneously.
+✅ Implementation
+java
+Copy
+Edit
+import java.util.*;
+import java.util.stream.Collectors;
+
+class PersonDTO {
+    private String name;
+    private int age;
+    private String city;
+
+    public PersonDTO(String name, int age, String city) {
+        this.name = name;
+        this.age = age;
+        this.city = city;
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+    public String getCity() { return city; }
+}
+
+public class ExtractProperties {
+    public static void main(String[] args) {
+        List<PersonDTO> people = Arrays.asList(
+            new PersonDTO("Alice", 25, "New York"),
+            new PersonDTO("Bob", 30, "San Francisco"),
+            new PersonDTO("Charlie", 35, "Los Angeles")
+        );
+
+        // Using Streams and a Single Iteration
+        List<String> names = new ArrayList<>();
+        List<Integer> ages = new ArrayList<>();
+        List<String> cities = new ArrayList<>();
+
+        people.forEach(person -> {
+            names.add(person.getName());
+            ages.add(person.getAge());
+            cities.add(person.getCity());
+        });
+
+        // Output the extracted lists
+        System.out.println("Names: " + names);
+        System.out.println("Ages: " + ages);
+        System.out.println("Cities: " + cities);
+    }
+}
+🚀 Alternative: Using Collectors.toCollection()
+java
+Copy
+Edit
+Map<String, List<?>> extractedLists = people.stream().collect(Collectors.teeing(
+    Collectors.mapping(PersonDTO::getName, Collectors.toList()),
+    Collectors.mapping(PersonDTO::getAge, Collectors.toList()),
+    Collectors.mapping(PersonDTO::getCity, Collectors.toList()),
+    (names, ages, cities) -> Map.of("names", names, "ages", ages, "cities", cities)
+));
+
+System.out.println("Names: " + extractedLists.get("names"));
+System.out.println("Ages: " + extractedLists.get("ages"));
+System.out.println("Cities: " + extractedLists.get("cities"));
+✔ Elegant functional approach, but less readable than forEach().
+✔ Works well when processing large data sets in parallel.
+
+🚀 Summary: Best Approach
+Method	Performance	Best For
+forEach() Loop (Recommended ✅)	✅ Fastest	✅ Best for clarity & performance
+Collectors.teeing() (Java 12+)	🔄 Slightly Slower	✅ Best for functional style
+parallelStream()	⚡ Faster in multi-core CPUs	✅ Best for large datasets
+🚀 Next Steps
+Would you like: ✅ A parallel execution benchmark?
+✅ Support for filtering conditions dynamically?
+✅ A Spring Boot example with DTO mapping?
+
+Let me know! 🚀📌
+
+You said:
+Are you able to listen to me?
+In my Spring Boot application, where I am using a Caffeine Cache, not the At-Rate Cache, I have a scenario where I consume a batch of 1000 threads on a Kafka consumer, and extract two lists out of it. One is the instrument ID, which is a log, and another is a clearing account, which is a string. So I get two lists, this might be a 1000 ID or 1000 name list, and then both of them are sent to a Kafka, to a cache adapter, to the port, and I need to fire these SQL queries, which are in the DAO. Given the list, so two queries are in the DAO.
+ChatGPT said:
+Handling a Batch of 1000 Messages in Kafka, Extracting Lists, and Querying the Database in a Non-Blocking Way
+Since you are using Caffeine Cache (not @Cacheable) and processing Kafka messages in batches, the best approach is:
+
+Extract the instrument IDs (Long) and clearing accounts (String) from the batch.
+Query the database efficiently using the DAO for both lists.
+Use the cache to store results and avoid unnecessary DB calls.
+Ensure parallel/non-blocking execution for optimal performance.
+🚀 Optimized Approach
+Use Flux (Reactor) to handle async processing (or use CompletableFuture in a non-reactive approach).
+Fire two database queries in parallel for efficiency.
+Use a cache adapter to store results before sending to Kafka.
+✅ Step-by-Step Implementation
+1️⃣ Kafka Consumer to Process Batches
+java
+Copy
+Edit
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class KafkaConsumerService {
+    private final CacheAdapter cacheAdapter;
+    private final DatabaseService databaseService;
+    private final KafkaProducerService kafkaProducerService;
+
+    public KafkaConsumerService(CacheAdapter cacheAdapter, DatabaseService databaseService, KafkaProducerService kafkaProducerService) {
+        this.cacheAdapter = cacheAdapter;
+        this.databaseService = databaseService;
+        this.kafkaProducerService = kafkaProducerService;
+    }
+
+    @KafkaListener(topics = "input-topic", groupId = "batch-group")
+    public void consumeBatch(List<MessageDTO> messages) {
+        System.out.println("Received batch of size: " + messages.size());
+
+        // Extracting IDs and Names
+        List<Long> instrumentIds = messages.stream()
+                .map(MessageDTO::getInstrumentId)
+                .collect(Collectors.toList());
+
+        List<String> clearingAccounts = messages.stream()
+                .map(MessageDTO::getClearingAccount)
+                .collect(Collectors.toList());
+
+        // Fetch from Cache or DB & Send to Kafka
+        processLists(instrumentIds, clearingAccounts).subscribe();
+    }
+
+    private Mono<Void> processLists(List<Long> instrumentIds, List<String> clearingAccounts) {
+        // Query Cache or Database for both lists in parallel
+        Mono<List<Instrument>> instrumentMono = cacheAdapter.getInstruments(instrumentIds)
+                .switchIfEmpty(databaseService.getInstrumentsByIds(instrumentIds)
+                        .doOnNext(cacheAdapter::saveInstruments));
+
+        Mono<List<ClearingAccount>> clearingAccountMono = cacheAdapter.getClearingAccounts(clearingAccounts)
+                .switchIfEmpty(databaseService.getClearingAccountsByNames(clearingAccounts)
+                        .doOnNext(cacheAdapter::saveClearingAccounts));
+
+        // Combine results and send to Kafka
+        return Mono.zip(instrumentMono, clearingAccountMono)
+                .flatMap(tuple -> kafkaProducerService.sendToKafka(tuple.getT1(), tuple.getT2()));
+    }
+}
+✔ Extracts both lists from the Kafka batch.
+✔ Queries the cache first; falls back to DB if needed.
+✔ Runs DB queries in parallel using Mono.zip().
+✔ Sends results to Kafka once both queries are completed.
+
+2️⃣ Database Service (Handles Queries)
+java
+Copy
+Edit
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import java.util.List;
+
+@Service
+public class DatabaseService {
+    private final InstrumentDao instrumentDao;
+    private final ClearingAccountDao clearingAccountDao;
+
+    public DatabaseService(InstrumentDao instrumentDao, ClearingAccountDao clearingAccountDao) {
+        this.instrumentDao = instrumentDao;
+        this.clearingAccountDao = clearingAccountDao;
+    }
+
+    public Mono<List<Instrument>> getInstrumentsByIds(List<Long> ids) {
+        return Mono.fromCallable(() -> instrumentDao.findByIds(ids));
+    }
+
+    public Mono<List<ClearingAccount>> getClearingAccountsByNames(List<String> names) {
+        return Mono.fromCallable(() -> clearingAccountDao.findByNames(names));
+    }
+}
+✔ Queries the database efficiently using batch queries.
+✔ Wraps calls in Mono for non-blocking execution.
+
+3️⃣ Cache Adapter (Using Caffeine)
+java
+Copy
+Edit
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+@Component
+public class CacheAdapter {
+    private final Cache<Long, Instrument> instrumentCache;
+    private final Cache<String, ClearingAccount> clearingAccountCache;
+
+    public CacheAdapter() {
+        this.instrumentCache = Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+
+        this.clearingAccountCache = Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+    }
+
+    public Mono<List<Instrument>> getInstruments(List<Long> ids) {
+        List<Instrument> found = ids.stream()
+                .map(instrumentCache::getIfPresent)
+                .filter(obj -> obj != null)
+                .collect(Collectors.toList());
+        return found.isEmpty() ? Mono.empty() : Mono.just(found);
+    }
+
+    public Mono<List<ClearingAccount>> getClearingAccounts(List<String> names) {
+        List<ClearingAccount> found = names.stream()
+                .map(clearingAccountCache::getIfPresent)
+                .filter(obj -> obj != null)
+                .collect(Collectors.toList());
+        return found.isEmpty() ? Mono.empty() : Mono.just(found);
+    }
+
+    public void saveInstruments(List<Instrument> instruments) {
+        instruments.forEach(inst -> instrumentCache.put(inst.getId(), inst));
+    }
+
+    public void saveClearingAccounts(List<ClearingAccount> accounts) {
+        accounts.forEach(acc -> clearingAccountCache.put(acc.getName(), acc));
+    }
+}
+✔ Caches results to avoid unnecessary DB calls.
+✔ Checks cache first before querying DB.
+
+4️⃣ DAO (Handles Batch Queries)
+java
+Copy
+Edit
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public class InstrumentDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public InstrumentDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public List<Instrument> findByIds(List<Long> ids) {
+        String sql = "SELECT * FROM instruments WHERE id IN (" + String.join(",", ids.stream().map(String::valueOf).toArray(String[]::new)) + ")";
+        return jdbcTemplate.query(sql, new InstrumentRowMapper());
+    }
+}
+
+@Repository
+public class ClearingAccountDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public ClearingAccountDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public List<ClearingAccount> findByNames(List<String> names) {
+        String sql = "SELECT * FROM clearing_accounts WHERE name IN (" + String.join(",", names.stream().map(name -> "'" + name + "'").toArray(String[]::new)) + ")";
+        return jdbcTemplate.query(sql, new ClearingAccountRowMapper());
+    }
+}
+✔ Uses batch queries for efficiency.
+✔ Avoids iterating over individual IDs/names.
+
+5️⃣ Kafka Producer Service
+java
+Copy
+Edit
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import java.util.List;
+
+@Service
+public class KafkaProducerService {
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    public KafkaProducerService(KafkaTemplate<String, String> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    public Mono<Void> sendToKafka(List<Instrument> instruments, List<ClearingAccount> accounts) {
+        return Mono.fromRunnable(() -> {
+            kafkaTemplate.send("output-topic", "Instruments: " + instruments);
+            kafkaTemplate.send("output-topic", "Clearing Accounts: " + accounts);
+        });
+    }
+}
+✔ Sends results to Kafka once both queries are completed.
+
+🚀 Summary
+Step	Technology
+Consume Kafka Batch	@KafkaListener
+Extract IDs & Names	stream().map()
+Check Cache First	Caffeine getIfPresent()
+Query DB for Missing Data	JdbcTemplate batch queries
+Send Data to Kafka	KafkaTemplate.send()
+Ensure Non-Blocking Execution	Reactor (Mono.zip())
+🔥 Final Takeaway: Avoid blocking by using Mono.zip() to execute both DB queries in parallel. 🚀
+
+Would you like: ✅ Unit tests for caching & database queries?
+✅ Performance benchmarking between cache & DB queries?
+
+Let me know! 🚀📌
+
+You said:
+No i was asking something else
+ChatGPT said:
+I see! Can you clarify what part of the process you're asking about? Are you asking how to:
+
+Extract the two lists from the Kafka batch efficiently?
+Pass the extracted lists to the cache adapter and port correctly?
+Execute the two database queries dynamically inside the DAO?
+Optimize query execution with batch processing?
+If you can specify the exact part you're struggling with, I can give a targeted solution. 🚀
+
+You said:
+This is hexagonal architecture,  the port defined in the interface has 3 methods populatecache(map<string,list<?>) and getinstrument(long id) and getAccount(string name)  first using collector.teeing the map<string, list<?>) is created and sent to adapter which is in infrastructure layer from the application layer using the port. This goes to the database  dao consider in cannot handle more than 999 it splits and fires the sqls gets the data and fill up both the cache, next getinstrument or getaccount fetch from cache
+ChatGPT said:
+Handling Bulk Data Querying and Caching in a Hexagonal Architecture with Caffeine and DAO Limitations
+Since you're following Hexagonal Architecture, the workflow involves:
+
+Extracting lists from the Kafka batch.
+Using Collectors.teeing() to create a Map<String, List<?>> for instrument IDs and clearing accounts.
+Passing this map to the Adapter via the Port in the Infrastructure Layer.
+The Adapter queries the DAO, splitting queries into batches (<= 999 items).
+The Adapter stores results in Caffeine Cache.
+Subsequent calls to getInstrument() or getAccount() fetch from cache.
+🚀 Key Challenges and Solutions
+Challenge	Solution
+DAO cannot handle more than 999 records	✅ Split the query into batches and aggregate results.
+Efficiently passing both lists from application to infrastructure	✅ Use Collectors.teeing() to create a structured map.
+Populating the cache efficiently after fetching from DB	✅ Batch insert into Caffeine Cache.
+Fetching from cache first before querying DB	✅ Use cache.getIfPresent() before hitting DAO.
+1️⃣ Port Interface (Application Layer)
+Defines the contract for caching and fetching instruments & accounts.
+
+java
+Copy
+Edit
+package com.example.domain.port;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public interface InstrumentCachePort {
+    void populateCache(Map<String, List<?>> data);
+    Optional<Instrument> getInstrument(Long id);
+    Optional<ClearingAccount> getAccount(String name);
+}
+✔ Ensures Infrastructure Layer adheres to the expected contract.
+
+2️⃣ Application Layer: Using Collectors.teeing()
+Extract both lists and send them together via populateCache().
+
+java
+Copy
+Edit
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class ApplicationService {
+    private final InstrumentCachePort cachePort;
+
+    public ApplicationService(InstrumentCachePort cachePort) {
+        this.cachePort = cachePort;
+    }
+
+    public void processBatch(List<MessageDTO> messages) {
+        Map<String, List<?>> extractedData = messages.stream()
+                .collect(Collectors.teeing(
+                        Collectors.mapping(MessageDTO::getInstrumentId, Collectors.toList()),
+                        Collectors.mapping(MessageDTO::getClearingAccount, Collectors.toList()),
+                        (instrumentIds, clearingAccounts) -> Map.of(
+                                "instrumentIds", instrumentIds,
+                                "clearingAccounts", clearingAccounts
+                        )
+                ));
+
+        cachePort.populateCache(extractedData);  // Send to Adapter via Port
+    }
+}
+✔ Uses Collectors.teeing() to efficiently extract both lists in one iteration.
+✔ Ensures the domain layer remains clean and independent.
+
+3️⃣ Infrastructure Layer: Adapter Implementation
+Handles batching of DB queries and cache population.
+
+java
+Copy
+Edit
+import com.example.domain.port.InstrumentCachePort;
+import org.springframework.stereotype.Component;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
+@Component
+public class CacheAdapter implements InstrumentCachePort {
+    private final InstrumentDao instrumentDao;
+    private final ClearingAccountDao clearingAccountDao;
+
+    private final Cache<Long, Instrument> instrumentCache;
+    private final Cache<String, ClearingAccount> clearingAccountCache;
+
+    public CacheAdapter(InstrumentDao instrumentDao, ClearingAccountDao clearingAccountDao) {
+        this.instrumentDao = instrumentDao;
+        this.clearingAccountDao = clearingAccountDao;
+
+        // Initialize Caffeine Cache
+        this.instrumentCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+
+        this.clearingAccountCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Override
+    public void populateCache(Map<String, List<?>> data) {
+        List<Long> instrumentIds = (List<Long>) data.get("instrumentIds");
+        List<String> clearingAccounts = (List<String>) data.get("clearingAccounts");
+
+        // Query database in batches if cache is empty
+        if (instrumentIds != null && !instrumentIds.isEmpty()) {
+            List<Instrument> instruments = batchQueryInstruments(instrumentIds);
+            instruments.forEach(inst -> instrumentCache.put(inst.getId(), inst));
+        }
+
+        if (clearingAccounts != null && !clearingAccounts.isEmpty()) {
+            List<ClearingAccount> accounts = batchQueryClearingAccounts(clearingAccounts);
+            accounts.forEach(acc -> clearingAccountCache.put(acc.getName(), acc));
+        }
+    }
+
+    private List<Instrument> batchQueryInstruments(List<Long> ids) {
+        List<Instrument> result = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i += 999) {
+            List<Long> batch = ids.subList(i, Math.min(i + 999, ids.size()));
+            result.addAll(instrumentDao.findByIds(batch));
+        }
+        return result;
+    }
+
+    private List<ClearingAccount> batchQueryClearingAccounts(List<String> names) {
+        List<ClearingAccount> result = new ArrayList<>();
+        for (int i = 0; i < names.size(); i += 999) {
+            List<String> batch = names.subList(i, Math.min(i + 999, names.size()));
+            result.addAll(clearingAccountDao.findByNames(batch));
+        }
+        return result;
+    }
+
+    @Override
+    public Optional<Instrument> getInstrument(Long id) {
+        return Optional.ofNullable(instrumentCache.getIfPresent(id));
+    }
+
+    @Override
+    public Optional<ClearingAccount> getAccount(String name) {
+        return Optional.ofNullable(clearingAccountCache.getIfPresent(name));
+    }
+}
+✔ Splits large queries into batches of ≤ 999 IDs.
+✔ Caches results for faster retrieval.
+✔ Ensures non-blocking Optional lookups for cache retrieval.
+
+4️⃣ DAO Layer: Handling Batch Queries
+Since the database cannot handle more than 999 items per query, we use batching.
+
+java
+Copy
+Edit
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public class InstrumentDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public InstrumentDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public List<Instrument> findByIds(List<Long> ids) {
+        String inClause = String.join(",", ids.stream().map(String::valueOf).toArray(String[]::new));
+        String sql = "SELECT * FROM instruments WHERE id IN (" + inClause + ")";
+        return jdbcTemplate.query(sql, new InstrumentRowMapper());
+    }
+}
+
+@Repository
+public class ClearingAccountDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public ClearingAccountDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public List<ClearingAccount> findByNames(List<String> names) {
+        String inClause = String.join(",", names.stream().map(name -> "'" + name + "'").toArray(String[]::new));
+        String sql = "SELECT * FROM clearing_accounts WHERE name IN (" + inClause + ")";
+        return jdbcTemplate.query(sql, new ClearingAccountRowMapper());
+    }
+}
+✔ Executes efficient batch queries instead of looping through individual IDs.
+✔ Prevents SQL IN clause limitation (>999 elements).
+
+🚀 Summary
+Step	Action
+Extract IDs & Names from Kafka	✅ Uses Collectors.teeing() for efficiency.
+Pass Data to Adapter via Port	✅ Keeps Hexagonal Architecture clean.
+Split Large Queries in Adapter	✅ Batches queries in chunks of 999.
+Cache Results for Fast Retrieval	✅ Uses Caffeine Cache (getIfPresent()).
+Subsequent Calls Fetch from Cache	✅ Avoids redundant database hits.
+🚀 Next Steps
+Would you like: ✅ Unit tests for the cache and batch query handling?
+✅ Spring Boot metrics to track cache hits vs. DB queries?
+✅ Integration with a reactive DB (R2DBC) for async execution?
+
+Let me know! 🚀📌
+
+You said:
+How will the structure look considering hexagonal architecture 
+ChatGPT said:
+Hexagonal Architecture Structure for Kafka Processing, Caffeine Caching, and DAO Batch Queries
+In a Hexagonal Architecture, the system is divided into three layers:
+
+Domain Layer (Business Logic, Ports/Interfaces)
+Application Layer (Use Cases, Orchestration)
+Infrastructure Layer (Adapters, External Integrations)
+🚀 Folder Structure
+pgsql
+Copy
+Edit
+proto-enrichment/
+│── pom.xml  # Parent POM
+│
+├── domain/  ✅ (Independent Core Business Logic)
+│   ├── src/main/java/com/example/domain/
+│   │   ├── model/
+│   │   │   ├── Instrument.java
+│   │   │   ├── ClearingAccount.java
+│   │   ├── port/
+│   │   │   ├── InstrumentCachePort.java
+│   ├── pom.xml
+│
+├── application/  ✅ (Use Case Logic, Orchestrates Calls to Ports)
+│   ├── src/main/java/com/example/application/
+│   │   ├── service/
+│   │   │   ├── InstrumentProcessingService.java
+│   │   ├── kafka/
+│   │   │   ├── KafkaConsumerService.java
+│   ├── pom.xml
+│
+├── infrastructure/  ✅ (Implements Ports, Handles External Interactions)
+│   ├── pom.xml
+│   │── adapter/
+│   │   ├── cache/
+│   │   │   ├── CacheAdapter.java
+│   │   ├── database/
+│   │   │   ├── dao/
+│   │   │   │   ├── InstrumentDao.java
+│   │   │   │   ├── ClearingAccountDao.java
+│   │   │   ├── DatabaseAdapter.java
+│   │   ├── kafka/
+│   │   │   ├── KafkaProducerAdapter.java
+│
+├── adapter/  ✅ (External API, Messaging Adapters)
+│   ├── src/main/java/com/example/adapter/
+│   │   ├── consumer/
+│   │   │   ├── KafkaConsumerAdapter.java
+│   ├── pom.xml
+🚀 Key Layer Responsibilities
+Layer	Responsibility	Example Components
+Domain (Core Business Logic)	Defines models and ports	Instrument.java, ClearingAccount.java, InstrumentCachePort.java
+Application (Use Case Logic)	Orchestrates calls to domain and infrastructure	KafkaConsumerService.java, InstrumentProcessingService.java
+Infrastructure (Implements Ports & Integrations)	Implements database access, caching, Kafka, etc.	CacheAdapter.java, DatabaseAdapter.java, InstrumentDao.java, KafkaProducerAdapter.java
+1️⃣ Domain Layer (Independent Core Business Logic)
+This layer defines data models and ports (interfaces).
+
+🔹 Domain Model: Instrument.java
+java
+Copy
+Edit
+package com.example.domain.model;
+
+public class Instrument {
+    private final Long id;
+    private final String name;
+
+    public Instrument(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public Long getId() { return id; }
+    public String getName() { return name; }
+}
+🔹 Port Interface: InstrumentCachePort.java
+java
+Copy
+Edit
+package com.example.domain.port;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public interface InstrumentCachePort {
+    void populateCache(Map<String, List<?>> data);
+    Optional<Instrument> getInstrument(Long id);
+    Optional<String> getAccount(String name);
+}
+✔ Defines a contract for caching & retrieval, but does not implement it.
+✔ This ensures domain logic remains technology-agnostic.
+
+2️⃣ Application Layer (Use Cases & Orchestration)
+This layer contains the Kafka consumer and the processing logic.
+
+🔹 Kafka Consumer Service
+java
+Copy
+Edit
+package com.example.application.kafka;
+
+import com.example.application.service.InstrumentProcessingService;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+import java.util.List;
+
+@Service
+public class KafkaConsumerService {
+    private final InstrumentProcessingService processingService;
+
+    public KafkaConsumerService(InstrumentProcessingService processingService) {
+        this.processingService = processingService;
+    }
+
+    @KafkaListener(topics = "input-topic", groupId = "batch-group")
+    public void consumeBatch(List<MessageDTO> messages) {
+        processingService.processBatch(messages);
+    }
+}
+✔ Extracts the Kafka batch and forwards it to the processing service.
+
+🔹 Instrument Processing Service
+java
+Copy
+Edit
+package com.example.application.service;
+
+import com.example.domain.port.InstrumentCachePort;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+public class InstrumentProcessingService {
+    private final InstrumentCachePort cachePort;
+
+    public InstrumentProcessingService(InstrumentCachePort cachePort) {
+        this.cachePort = cachePort;
+    }
+
+    public void processBatch(List<MessageDTO> messages) {
+        Map<String, List<?>> extractedData = messages.stream()
+                .collect(Collectors.teeing(
+                        Collectors.mapping(MessageDTO::getInstrumentId, Collectors.toList()),
+                        Collectors.mapping(MessageDTO::getClearingAccount, Collectors.toList()),
+                        (instrumentIds, clearingAccounts) -> Map.of(
+                                "instrumentIds", instrumentIds,
+                                "clearingAccounts", clearingAccounts
+                        )
+                ));
+
+        cachePort.populateCache(extractedData);
+    }
+}
+✔ Extracts the required lists and calls populateCache() via the port.
+
+3️⃣ Infrastructure Layer (Cache, Database, and DAO Implementations)
+This layer implements the ports defined in the domain.
+
+🔹 Cache Adapter (Implements Port)
+java
+Copy
+Edit
+package com.example.infrastructure.adapter.cache;
+
+import com.example.domain.port.InstrumentCachePort;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Component;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class CacheAdapter implements InstrumentCachePort {
+    private final Cache<Long, Instrument> instrumentCache;
+    private final Cache<String, String> clearingAccountCache;
+
+    public CacheAdapter() {
+        this.instrumentCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+
+        this.clearingAccountCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Override
+    public void populateCache(Map<String, List<?>> data) {
+        List<Long> instrumentIds = (List<Long>) data.get("instrumentIds");
+        List<String> clearingAccounts = (List<String>) data.get("clearingAccounts");
+
+        // Batch process IDs in chunks of 999
+        List<Instrument> instruments = batchQueryInstruments(instrumentIds);
+        instruments.forEach(inst -> instrumentCache.put(inst.getId(), inst));
+
+        List<String> accounts = batchQueryClearingAccounts(clearingAccounts);
+        accounts.forEach(acc -> clearingAccountCache.put(acc, acc));
+    }
+
+    @Override
+    public Optional<Instrument> getInstrument(Long id) {
+        return Optional.ofNullable(instrumentCache.getIfPresent(id));
+    }
+
+    @Override
+    public Optional<String> getAccount(String name) {
+        return Optional.ofNullable(clearingAccountCache.getIfPresent(name));
+    }
+}
+✔ Ensures caching is implemented while maintaining clean separation from the domain.
+
+🚀 Summary of the Hexagonal Structure
+Layer	Responsibility	Components
+Domain	Defines business logic and ports	Instrument.java, InstrumentCachePort.java
+Application	Implements use cases, orchestrates calls	KafkaConsumerService.java, InstrumentProcessingService.java
+Infrastructure	Implements cache, database, and external services	CacheAdapter.java, InstrumentDao.java, KafkaProducerAdapter.java
+🚀 Final Takeaway: Follow this structure to ensure modularity and clean separation between concerns.
+
+Would you like: ✅ Unit tests for this architecture?
+✅ Metrics for cache hits and DB queries?
+✅ Performance benchmarking between cache and database?
+
+Let me know! 🚀📌
+
+You said:
+Where will the individual getinstrument and getaccount methods go ...in which port and how they will be called and what will happen incase of cache miss
+ChatGPT said:
+Where Should getInstrument(Long id) and getAccount(String name) Go in Hexagonal Architecture?
+Both methods belong to the InstrumentCachePort because:
+
+They deal with retrieving data from the cache.
+They fall back to the database via the adapter if the cache misses.
+📌 Flow When getInstrument(id) or getAccount(name) is Called
+Check Caffeine Cache first.
+If data exists → Return from cache.
+If data is missing → Fetch from the database.
+Store the retrieved value in the cache for future use.
+Return the fetched data.
+🚀 Updated InstrumentCachePort (Domain Layer)
+Defines contract for cache retrieval with fallback to DB
+java
+Copy
+Edit
+package com.example.domain.port;
+
+import com.example.domain.model.Instrument;
+import java.util.Optional;
+
+public interface InstrumentCachePort {
+    void populateCache(Map<String, List<?>> data); // Preload cache
+    Optional<Instrument> getInstrument(Long id);  // Fetch instrument by ID
+    Optional<String> getAccount(String name);  // Fetch account by name
+}
+✔ Ports define behavior but do not implement logic.
+✔ Ensures loose coupling between application and infrastructure.
+
+🚀 Updated CacheAdapter (Infrastructure Layer)
+Implements Cache Fetching with Database Fallback
+java
+Copy
+Edit
+package com.example.infrastructure.adapter.cache;
+
+import com.example.domain.model.Instrument;
+import com.example.domain.port.InstrumentCachePort;
+import com.example.infrastructure.adapter.database.InstrumentDao;
+import com.example.infrastructure.adapter.database.ClearingAccountDao;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Component;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class CacheAdapter implements InstrumentCachePort {
+    private final Cache<Long, Instrument> instrumentCache;
+    private final Cache<String, String> clearingAccountCache;
+    private final InstrumentDao instrumentDao;
+    private final ClearingAccountDao clearingAccountDao;
+
+    public CacheAdapter(InstrumentDao instrumentDao, ClearingAccountDao clearingAccountDao) {
+        this.instrumentDao = instrumentDao;
+        this.clearingAccountDao = clearingAccountDao;
+
+        this.instrumentCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+
+        this.clearingAccountCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Override
+    public void populateCache(Map<String, List<?>> data) {
+        List<Long> instrumentIds = (List<Long>) data.get("instrumentIds");
+        List<String> clearingAccounts = (List<String>) data.get("clearingAccounts");
+
+        if (instrumentIds != null && !instrumentIds.isEmpty()) {
+            List<Instrument> instruments = batchQueryInstruments(instrumentIds);
+            instruments.forEach(inst -> instrumentCache.put(inst.getId(), inst));
+        }
+
+        if (clearingAccounts != null && !clearingAccounts.isEmpty()) {
+            List<String> accounts = batchQueryClearingAccounts(clearingAccounts);
+            accounts.forEach(acc -> clearingAccountCache.put(acc, acc));
+        }
+    }
+
+    @Override
+    public Optional<Instrument> getInstrument(Long id) {
+        return Optional.ofNullable(instrumentCache.getIfPresent(id))
+                .or(() -> {
+                    // If cache misses, fetch from DB and store in cache
+                    Optional<Instrument> instrument = instrumentDao.findById(id);
+                    instrument.ifPresent(inst -> instrumentCache.put(inst.getId(), inst));
+                    return instrument;
+                });
+    }
+
+    @Override
+    public Optional<String> getAccount(String name) {
+        return Optional.ofNullable(clearingAccountCache.getIfPresent(name))
+                .or(() -> {
+                    // If cache misses, fetch from DB and store in cache
+                    Optional<String> account = clearingAccountDao.findByName(name);
+                    account.ifPresent(acc -> clearingAccountCache.put(name, acc));
+                    return account;
+                });
+    }
+
+    private List<Instrument> batchQueryInstruments(List<Long> ids) {
+        List<Instrument> result = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i += 999) {
+            List<Long> batch = ids.subList(i, Math.min(i + 999, ids.size()));
+            result.addAll(instrumentDao.findByIds(batch));
+        }
+        return result;
+    }
+
+    private List<String> batchQueryClearingAccounts(List<String> names) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < names.size(); i += 999) {
+            List<String> batch = names.subList(i, Math.min(i + 999, names.size()));
+            result.addAll(clearingAccountDao.findByNames(batch));
+        }
+        return result;
+    }
+}
+✔ Fetches data from cache first, then queries DB if missing.
+✔ Stores fetched values back in the cache.
+✔ Splits large queries into chunks of 999 to prevent DB errors.
+
+🚀 DAO Layer (Handles Database Queries)
+Since cache misses require DB queries, DAO handles the database retrieval.
+
+🔹 Instrument DAO
+java
+Copy
+Edit
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class InstrumentDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public InstrumentDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public Optional<Instrument> findById(Long id) {
+        String sql = "SELECT * FROM instruments WHERE id = ?";
+        return jdbcTemplate.query(sql, new InstrumentRowMapper(), id).stream().findFirst();
+    }
+
+    public List<Instrument> findByIds(List<Long> ids) {
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT * FROM instruments WHERE id IN (" + placeholders + ")";
+        return jdbcTemplate.query(sql, new InstrumentRowMapper(), ids.toArray());
+    }
+}
+🔹 Clearing Account DAO
+java
+Copy
+Edit
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class ClearingAccountDao {
+    private final JdbcTemplate jdbcTemplate;
+
+    public ClearingAccountDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public Optional<String> findByName(String name) {
+        String sql = "SELECT name FROM clearing_accounts WHERE name = ?";
+        return jdbcTemplate.queryForList(sql, String.class, name).stream().findFirst();
+    }
+
+    public List<String> findByNames(List<String> names) {
+        String placeholders = String.join(",", Collections.nCopies(names.size(), "?"));
+        String sql = "SELECT name FROM clearing_accounts WHERE name IN (" + placeholders + ")";
+        return jdbcTemplate.queryForList(sql, String.class, names.toArray());
+    }
+}
+✔ Implements efficient DB queries using JdbcTemplate.
+✔ Handles both single-value lookups and batch queries.
+
+🚀 How getInstrument() and getAccount() Work in Different Scenarios
+Scenario	Cache Hit	Cache Miss
+getInstrument(123L)	✅ Return from Caffeine Cache	❌ Query DB → Store in cache → Return result
+getAccount("ABC123")	✅ Return from Caffeine Cache	❌ Query DB → Store in cache → Return result
+Large batch processing (populateCache)	✅ Cache is prefilled	❌ Query DB in batches of 999
+🚀 Summary of the Hexagonal Architecture
+Layer	Responsibility	Components
+Domain	Defines models and ports	Instrument.java, InstrumentCachePort.java
+Application	Implements use cases and orchestrates calls	KafkaConsumerService.java, InstrumentProcessingService.java
+Infrastructure	Implements cache, database, and external services	CacheAdapter.java, InstrumentDao.java, ClearingAccountDao.java
+🚀 Final Takeaway:
+
+Cache is checked first.
+Cache misses trigger DB queries.
+DB results are cached for future use.
+Would you like: ✅ Unit tests for caching logic?
+✅ Performance benchmarks between cache and DB?
+✅ Integration with WebFlux for non-blocking execution?
+
+Let me know! 🚀📌
+
+You said:
+What if i am not using jdbc template but preparedstatement and resultset only
+ChatGPT said:
+Using PreparedStatement and ResultSet Instead of JdbcTemplate in Hexagonal Architecture
+If you're using raw PreparedStatement and ResultSet instead of JdbcTemplate, the DAO implementation will:
+
+Manually manage connections (try-with-resources for cleanup).
+Use PreparedStatement for parameterized queries to prevent SQL injection.
+Process ResultSet manually to map database rows to objects.
+🚀 Updated DAO Implementation with PreparedStatement
+1️⃣ InstrumentDao (Fetching Instruments)
+java
+Copy
+Edit
+import com.example.domain.model.Instrument;
+import org.springframework.stereotype.Repository;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class InstrumentDao {
+    private final DataSource dataSource;
+
+    public InstrumentDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    // Fetch a single instrument by ID
+    public Optional<Instrument> findById(Long id) {
+        String sql = "SELECT id, name FROM instruments WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(new Instrument(rs.getLong("id"), rs.getString("name")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle exceptions properly (logging, custom exceptions)
+        }
+        return Optional.empty();
+    }
+
+    // Fetch multiple instruments using batch processing (<= 999 at a time)
+    public List<Instrument> findByIds(List<Long> ids) {
+        if (ids.isEmpty()) return new ArrayList<>();
+
+        List<Instrument> instruments = new ArrayList<>();
+        String placeholders = String.join(",", ids.stream().map(x -> "?").toArray(String[]::new));
+        String sql = "SELECT id, name FROM instruments WHERE id IN (" + placeholders + ")";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < ids.size(); i++) {
+                stmt.setLong(i + 1, ids.get(i)); // Set each ID dynamically
+            }
+
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                instruments.add(new Instrument(rs.getLong("id"), rs.getString("name")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return instruments;
+    }
+}
+✔ Uses PreparedStatement for security (prevents SQL injection).
+✔ Manages DB connections manually using try-with-resources.
+✔ Handles ResultSet manually and maps rows to objects.
+✔ Batch queries IDs (≤ 999) using placeholders (?).
+
+2️⃣ ClearingAccountDao (Fetching Accounts)
+java
+Copy
+Edit
+import org.springframework.stereotype.Repository;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class ClearingAccountDao {
+    private final DataSource dataSource;
+
+    public ClearingAccountDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    // Fetch a single clearing account by name
+    public Optional<String> findByName(String name) {
+        String sql = "SELECT name FROM clearing_accounts WHERE name = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, name);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(rs.getString("name"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    // Fetch multiple clearing accounts (batch processing)
+    public List<String> findByNames(List<String> names) {
+        if (names.isEmpty()) return new ArrayList<>();
+
+        List<String> accounts = new ArrayList<>();
+        String placeholders = String.join(",", names.stream().map(x -> "?").toArray(String[]::new));
+        String sql = "SELECT name FROM clearing_accounts WHERE name IN (" + placeholders + ")";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < names.size(); i++) {
+                stmt.setString(i + 1, names.get(i));
+            }
+
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                accounts.add(rs.getString("name"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return accounts;
+    }
+}
+✔ Handles multiple account name queries efficiently.
+✔ Uses PreparedStatement for safe, parameterized queries.
+✔ Manages connections using try-with-resources.
+
+3️⃣ CacheAdapter (Handling Cache with DB Fallback)
+This implementation:
+
+Tries to fetch from Caffeine Cache first.
+If data is missing, queries DAO and updates cache.
+Ensures efficient retrieval while minimizing DB calls.
+java
+Copy
+Edit
+import com.example.domain.model.Instrument;
+import com.example.domain.port.InstrumentCachePort;
+import com.example.infrastructure.adapter.database.InstrumentDao;
+import com.example.infrastructure.adapter.database.ClearingAccountDao;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Component;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class CacheAdapter implements InstrumentCachePort {
+    private final Cache<Long, Instrument> instrumentCache;
+    private final Cache<String, String> clearingAccountCache;
+    private final InstrumentDao instrumentDao;
+    private final ClearingAccountDao clearingAccountDao;
+
+    public CacheAdapter(InstrumentDao instrumentDao, ClearingAccountDao clearingAccountDao) {
+        this.instrumentDao = instrumentDao;
+        this.clearingAccountDao = clearingAccountDao;
+
+        this.instrumentCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+
+        this.clearingAccountCache = Caffeine.newBuilder()
+                .maximumSize(5000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Override
+    public void populateCache(Map<String, List<?>> data) {
+        List<Long> instrumentIds = (List<Long>) data.get("instrumentIds");
+        List<String> clearingAccounts = (List<String>) data.get("clearingAccounts");
+
+        if (instrumentIds != null && !instrumentIds.isEmpty()) {
+            List<Instrument> instruments = instrumentDao.findByIds(instrumentIds);
+            instruments.forEach(inst -> instrumentCache.put(inst.getId(), inst));
+        }
+
+        if (clearingAccounts != null && !clearingAccounts.isEmpty()) {
+            List<String> accounts = clearingAccountDao.findByNames(clearingAccounts);
+            accounts.forEach(acc -> clearingAccountCache.put(acc, acc));
+        }
+    }
+
+    @Override
+    public Optional<Instrument> getInstrument(Long id) {
+        return Optional.ofNullable(instrumentCache.getIfPresent(id))
+                .or(() -> {
+                    Optional<Instrument> instrument = instrumentDao.findById(id);
+                    instrument.ifPresent(inst -> instrumentCache.put(inst.getId(), inst));
+                    return instrument;
+                });
+    }
+
+    @Override
+    public Optional<String> getAccount(String name) {
+        return Optional.ofNullable(clearingAccountCache.getIfPresent(name))
+                .or(() -> {
+                    Optional<String> account = clearingAccountDao.findByName(name);
+                    account.ifPresent(acc -> clearingAccountCache.put(name, acc));
+                    return account;
+                });
+    }
+}
+✔ Cache first, DB second (reduces DB load).
+✔ Efficient handling of cache misses (queries DB and updates cache).
+
+🚀 Summary
+Layer	Component	Purpose
+Domain	InstrumentCachePort	Defines contract for caching and retrieval
+Application	KafkaConsumerService	Consumes Kafka messages and processes lists
+Infrastructure	CacheAdapter	Implements cache with Caffeine
+Infrastructure	InstrumentDao, ClearingAccountDao	Queries database using PreparedStatement
+🚀 Final Takeaway:
+
+✅ Use PreparedStatement for secure DB access.
+✅ Use try-with-resources to manage connections safely.
+✅ Use Caffeine Cache to avoid unnecessary DB hits.
+Would you like: ✅ Unit tests for DAO and cache handling?
+✅ Performance benchmarks between cache and DB queries?
+✅ Error handling improvements for DB failures?
+
+Let me know! 🚀📌
