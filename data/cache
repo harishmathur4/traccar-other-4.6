@@ -1,14 +1,14 @@
-Solution Approach: Handling Charge Calculation with Precedence and Volume Bands
+Solution Approach: Handling TAX Calculation with Precedence and Volume Bands
 
-To solve the problem where charges are calculated dynamically based on precedence and volume bands, and existing charges need to be adjusted as new charges arrive, we need to consider:
+To solve the problem where TAXs are calculated dynamically based on precedence and volume bands, and existing TAXs need to be adjusted as new TAXs arrive, we need to consider:
 
-1. Precedence Rules: Scratch charges take precedence over Day, which takes precedence over Overnight.
+1. Precedence Rules: "S" TAXs take precedence over "D", which takes precedence over "O".
 
 
 2. Volume Bands: Different quantity ranges have different rates.
 
 
-3. Incremental Adjustments: As new charges arrive, existing charges need to be reset or fixed based on precedence.
+3. Incremental Adjustments: As new TAXs arrive, existing TAXs need to be reset or fixed based on precedence.
 
 
 
@@ -17,7 +17,7 @@ To solve the problem where charges are calculated dynamically based on precedenc
 
 Step 1: Define the Data Structure
 
-We'll define Trade, Charge, and ChargeType classes, ensuring they can handle precedence, quantity splitting, and volume bands dynamically.
+We'll define Trade, TAX, and TAXType classes, ensuring they can handle precedence, quantity splitting, and volume bands dynamically.
 
 Trade Class
 
@@ -26,19 +26,19 @@ import java.util.List;
 public class Trade {
     private final String tradeId;
     private final int totalQuantity;
-    private List<Charge> charges;
+    private List<TAX> TAXs;
 
     public Trade(String tradeId, int totalQuantity) {
         this.tradeId = tradeId;
         this.totalQuantity = totalQuantity;
     }
 
-    public void setCharges(List<Charge> charges) {
-        this.charges = charges;
+    public void setTAXs(List<TAX> TAXs) {
+        this.TAXs = TAXs;
     }
 
-    public List<Charge> getCharges() {
-        return charges;
+    public List<TAX> getTAXs() {
+        return TAXs;
     }
 
     public int getTotalQuantity() {
@@ -49,18 +49,18 @@ public class Trade {
 
 ---
 
-Charge Type Enum (With Precedence)
+TAX Type Enum (With Precedence)
 
-Charge types are ranked based on their precedence, ensuring that SCRATCH > DAY > OVERNIGHT.
+TAX types are ranked based on their precedence, ensuring that "S" > "D" > "O".
 
-public enum ChargeType {
-    SCRATCH(1),
-    DAY(2),
-    OVERNIGHT(3);
+public enum TAXType {
+    "S"(1),
+    "D"(2),
+    "O"(3);
 
     private final int precedence;
 
-    ChargeType(int precedence) {
+    TAXType(int precedence) {
         this.precedence = precedence;
     }
 
@@ -72,23 +72,23 @@ public enum ChargeType {
 
 ---
 
-Charge Class
+TAX Class
 
-Each charge keeps track of its quantity, rate, and type.
+Each TAX keeps track of its quantity, rate, and type.
 
-public class Charge {
-    private final ChargeType chargeType;
+public class TAX {
+    private final TAXType TAXType;
     private int quantity;
     private double rate;
 
-    public Charge(ChargeType chargeType, int quantity, double rate) {
-        this.chargeType = chargeType;
+    public TAX(TAXType TAXType, int quantity, double rate) {
+        this.TAXType = TAXType;
         this.quantity = quantity;
         this.rate = rate;
     }
 
-    public ChargeType getChargeType() {
-        return chargeType;
+    public TAXType getTAXType() {
+        return TAXType;
     }
 
     public int getQuantity() {
@@ -99,15 +99,15 @@ public class Charge {
         return rate;
     }
 
-    public void adjustCharge(int newQuantity, double newRate) {
+    public void adjustTAX(int newQuantity, double newRate) {
         this.quantity = newQuantity;
         this.rate = newRate;
     }
 
     @Override
     public String toString() {
-        return "Charge{" +
-                "type=" + chargeType +
+        return "TAX{" +
+                "type=" + TAXType +
                 ", quantity=" + quantity +
                 ", rate=" + rate +
                 '}';
@@ -140,9 +140,9 @@ public class VolumeBandRates {
 
 ---
 
-Step 3: Charge Calculation Logic
+Step 3: TAX Calculation Logic
 
-1. Sort charges by precedence.
+1. Sort TAXs by precedence.
 
 
 2. Distribute quantity based on precedence.
@@ -151,7 +151,7 @@ Step 3: Charge Calculation Logic
 3. Apply volume bands for rate determination.
 
 
-4. Adjust existing charges if new ones arrive.
+4. Adjust existing TAXs if new ones arrive.
 
 
 
@@ -159,45 +159,45 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class ChargeCalculator {
+public class TAXCalculator {
 
-    public static List<Charge> calculateCharges(Trade trade, List<Charge> newCharges) {
-        List<Charge> allCharges = new ArrayList<>(newCharges);
+    public static List<TAX> calculateTAXs(Trade trade, List<TAX> newTAXs) {
+        List<TAX> allTAXs = new ArrayList<>(newTAXs);
 
-        // Sort charges by precedence (lower number = higher priority)
-        allCharges.sort(Comparator.comparingInt(c -> c.getChargeType().getPrecedence()));
+        // Sort TAXs by precedence (lower number = higher priority)
+        allTAXs.sort(Comparator.comparingInt(c -> c.getTAXType().getPrecedence()));
 
         int remainingQuantity = trade.getTotalQuantity();
-        List<Charge> adjustedCharges = new ArrayList<>();
+        List<TAX> adjustedTAXs = new ArrayList<>();
 
-        for (Charge charge : allCharges) {
+        for (TAX TAX : allTAXs) {
             if (remainingQuantity <= 0) break;
 
-            int chargeQuantity = Math.min(remainingQuantity, charge.getQuantity());
-            double rate = VolumeBandRates.getRateForQuantity(chargeQuantity);
+            int TAXQuantity = Math.min(remainingQuantity, TAX.getQuantity());
+            double rate = VolumeBandRates.getRateForQuantity(TAXQuantity);
 
-            adjustedCharges.add(new Charge(charge.getChargeType(), chargeQuantity, rate));
-            remainingQuantity -= chargeQuantity;
+            adjustedTAXs.add(new TAX(TAX.getTAXType(), TAXQuantity, rate));
+            remainingQuantity -= TAXQuantity;
         }
 
-        return adjustedCharges;
+        return adjustedTAXs;
     }
 
     public static void main(String[] args) {
         Trade trade = new Trade("T123", 1250);
 
-        List<Charge> newCharges = List.of(
-            new Charge(ChargeType.SCRATCH, 500, 0),   // Scratch first
-            new Charge(ChargeType.DAY, 500, 0),       // Then Day
-            new Charge(ChargeType.OVERNIGHT, 250, 0)  // Then Overnight
+        List<TAX> newTAXs = List.of(
+            new TAX(TAXType."S", 500, 0),   // "S" first
+            new TAX(TAXType."D", 500, 0),       // Then "D"
+            new TAX(TAXType."O", 250, 0)  // Then "O"
         );
 
-        List<Charge> updatedCharges = calculateCharges(trade, newCharges);
-        trade.setCharges(updatedCharges);
+        List<TAX> updatedTAXs = calculateTAXs(trade, newTAXs);
+        trade.setTAXs(updatedTAXs);
 
-        System.out.println("Updated Charges:");
-        for (Charge charge : trade.getCharges()) {
-            System.out.println(charge);
+        System.out.println("Updated TAXs:");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println(TAX);
         }
     }
 }
@@ -205,27 +205,27 @@ public class ChargeCalculator {
 
 ---
 
-Step 4: Handling New Incoming Charges
+Step 4: Handling New Incoming TAXs
 
-If new charges arrive, we need to reset the existing charges and recalculate based on precedence.
+If new TAXs arrive, we need to reset the existing TAXs and recalculate based on precedence.
 
-public static List<Charge> recalculateCharges(Trade trade, List<Charge> newIncomingCharges) {
-    return calculateCharges(trade, newIncomingCharges);
+public static List<TAX> recalculateTAXs(Trade trade, List<TAX> newIncomingTAXs) {
+    return calculateTAXs(trade, newIncomingTAXs);
 }
 
-Example of Recalculating Charges:
+Example of Recalculating TAXs:
 
-List<Charge> additionalCharges = List.of(
-    new Charge(ChargeType.SCRATCH, 400, 0),   // New scratch charge
-    new Charge(ChargeType.DAY, 600, 0)        // New day charge
+List<TAX> additionalTAXs = List.of(
+    new TAX(TAXType."S", 400, 0),   // New "S" TAX
+    new TAX(TAXType."D", 600, 0)        // New "D" TAX
 );
 
-List<Charge> updatedCharges = recalculateCharges(trade, additionalCharges);
-trade.setCharges(updatedCharges);
+List<TAX> updatedTAXs = recalculateTAXs(trade, additionalTAXs);
+trade.setTAXs(updatedTAXs);
 
-System.out.println("Charges after recalculation:");
-for (Charge charge : trade.getCharges()) {
-    System.out.println(charge);
+System.out.println("TAXs after recalculation:");
+for (TAX TAX : trade.getTAXs()) {
+    System.out.println(TAX);
 }
 
 
@@ -233,31 +233,31 @@ for (Charge charge : trade.getCharges()) {
 
 Final Output Example
 
-If a trade has 1250 quantity and we receive Scratch (500), Day (500), Overnight (250), the output will be:
+If a trade has 1250 quantity and we receive "S" (500), "D" (500), "O" (250), the output will be:
 
-Updated Charges:
-Charge{type=SCRATCH, quantity=500, rate=0.8}
-Charge{type=DAY, quantity=500, rate=0.5}
-Charge{type=OVERNIGHT, quantity=250, rate=0.5}
+Updated TAXs:
+TAX{type="S", quantity=500, rate=0.8}
+TAX{type="D", quantity=500, rate=0.5}
+TAX{type="O", quantity=250, rate=0.5}
 
-If later a new Scratch (400) and Day (600) arrive, we reset charges and recalculate:
+If later a new "S" (400) and "D" (600) arrive, we reset TAXs and recalculate:
 
-Charges after recalculation:
-Charge{type=SCRATCH, quantity=400, rate=0.8}
-Charge{type=DAY, quantity=600, rate=0.5}
-Charge{type=OVERNIGHT, quantity=250, rate=0.5}
+TAXs after recalculation:
+TAX{type="S", quantity=400, rate=0.8}
+TAX{type="D", quantity=600, rate=0.5}
+TAX{type="O", quantity=250, rate=0.5}
 
 
 ---
 
 Key Features in This Solution
 
-✅ Handles Precedence: Scratch > Day > Overnight
+✅ Handles Precedence: "S" > "D" > "O"
 ✅ Uses Volume Bands for Rate Calculation
-✅ Supports Incremental Charge Adjustments
+✅ Supports Incremental TAX Adjustments
 ✅ Efficient and Scalable
 
-This approach ensures dynamic reallocation of charges as more arrive, without breaking precedence rules.
+This approach ensures dynamic reallocation of TAXs as more arrive, without breaking precedence rules.
 
 
 ---
@@ -266,139 +266,139 @@ Next Steps
 
 Optimize Performance: If processing large data, use caching for rates.
 
-Database Integration: Store charges persistently for tracking.
+Database Integration: Store TAXs persistently for tracking.
 
 Concurrency Handling: Use locks or transactions to manage real-time updates.
 
 
 Let me know if you need modifications! 🚀
-Handling Charge Deletions in the Charge Calculation System
+Handling TAX Deletions in the TAX Calculation System
 
-If a charge is deleted, we need to rebalance the remaining charges while ensuring:
+If a TAX is deleted, we need to rebalance the remaining TAXs while ensuring:
 
-1. Precedence Rules Are Respected → Higher priority charges still take precedence.
-
-
-2. Volume Bands Are Reapplied → Adjust the rates dynamically based on remaining charges.
+1. Precedence Rules Are Respected → Higher priority TAXs still take precedence.
 
 
-3. Remaining Quantity is Redistributed → Any removed charge’s quantity must be reallocated among the remaining charges.
+2. Volume Bands Are Reapplied → Adjust the rates dynamically based on remaining TAXs.
+
+
+3. Remaining Quantity is Redistributed → Any removed TAX’s quantity must be reallocated among the remaining TAXs.
 
 
 
 
 ---
 
-Step 1: Modify Trade to Support Charge Removal
+Step 1: Modify Trade to Support TAX Removal
 
-We'll add a method to remove a charge and trigger recalculation.
+We'll add a method to remove a TAX and trigger recalculation.
 
 public class Trade {
     private final String tradeId;
     private final int totalQuantity;
-    private List<Charge> charges;
+    private List<TAX> TAXs;
 
     public Trade(String tradeId, int totalQuantity) {
         this.tradeId = tradeId;
         this.totalQuantity = totalQuantity;
     }
 
-    public void setCharges(List<Charge> charges) {
-        this.charges = charges;
+    public void setTAXs(List<TAX> TAXs) {
+        this.TAXs = TAXs;
     }
 
-    public List<Charge> getCharges() {
-        return charges;
+    public List<TAX> getTAXs() {
+        return TAXs;
     }
 
     public int getTotalQuantity() {
         return totalQuantity;
     }
 
-    public void removeCharge(ChargeType chargeType) {
-        charges.removeIf(charge -> charge.getChargeType() == chargeType);
-        this.charges = ChargeCalculator.recalculateCharges(this, charges);
+    public void removeTAX(TAXType TAXType) {
+        TAXs.removeIf(TAX -> TAX.getTAXType() == TAXType);
+        this.TAXs = TAXCalculator.recalculateTAXs(this, TAXs);
     }
 }
 
 
 ---
 
-Step 2: Modify ChargeCalculator to Handle Deletion
+Step 2: Modify TAXCalculator to Handle Deletion
 
-We'll add a method to redistribute quantity when a charge is removed.
+We'll add a method to redistribute quantity when a TAX is removed.
 
-Updated calculateCharges Method
+Updated calculateTAXs Method
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class ChargeCalculator {
+public class TAXCalculator {
 
-    public static List<Charge> calculateCharges(Trade trade, List<Charge> newCharges) {
-        List<Charge> allCharges = new ArrayList<>(newCharges);
+    public static List<TAX> calculateTAXs(Trade trade, List<TAX> newTAXs) {
+        List<TAX> allTAXs = new ArrayList<>(newTAXs);
 
-        // Sort charges by precedence (lower precedence number = higher priority)
-        allCharges.sort(Comparator.comparingInt(c -> c.getChargeType().getPrecedence()));
+        // Sort TAXs by precedence (lower precedence number = higher priority)
+        allTAXs.sort(Comparator.comparingInt(c -> c.getTAXType().getPrecedence()));
 
         int remainingQuantity = trade.getTotalQuantity();
-        List<Charge> adjustedCharges = new ArrayList<>();
+        List<TAX> adjustedTAXs = new ArrayList<>();
 
-        for (Charge charge : allCharges) {
+        for (TAX TAX : allTAXs) {
             if (remainingQuantity <= 0) break;
 
-            int chargeQuantity = Math.min(remainingQuantity, charge.getQuantity());
-            double rate = VolumeBandRates.getRateForQuantity(chargeQuantity);
+            int TAXQuantity = Math.min(remainingQuantity, TAX.getQuantity());
+            double rate = VolumeBandRates.getRateForQuantity(TAXQuantity);
 
-            adjustedCharges.add(new Charge(charge.getChargeType(), chargeQuantity, rate));
-            remainingQuantity -= chargeQuantity;
+            adjustedTAXs.add(new TAX(TAX.getTAXType(), TAXQuantity, rate));
+            remainingQuantity -= TAXQuantity;
         }
 
-        return adjustedCharges;
+        return adjustedTAXs;
     }
 
-    public static List<Charge> handleChargeDeletion(Trade trade, ChargeType deletedChargeType) {
-        // Remove the deleted charge and redistribute the remaining quantity
-        List<Charge> updatedCharges = new ArrayList<>(trade.getCharges());
-        updatedCharges.removeIf(charge -> charge.getChargeType() == deletedChargeType);
+    public static List<TAX> handleTAXDeletion(Trade trade, TAXType deletedTAXType) {
+        // Remove the deleted TAX and redistribute the remaining quantity
+        List<TAX> updatedTAXs = new ArrayList<>(trade.getTAXs());
+        updatedTAXs.removeIf(TAX -> TAX.getTAXType() == deletedTAXType);
 
-        return calculateCharges(trade, updatedCharges);
+        return calculateTAXs(trade, updatedTAXs);
     }
 }
 
 
 ---
 
-Step 3: Implement Charge Removal in the Main Flow
+Step 3: Implement TAX Removal in the Main Flow
 
-Now, let's delete a charge and recalculate the remaining ones.
+Now, let's delete a TAX and recalculate the remaining ones.
 
-Example: Deleting a Charge
+Example: Deleting a TAX
 
 public class Main {
     public static void main(String[] args) {
         Trade trade = new Trade("T123", 1250);
 
-        List<Charge> newCharges = List.of(
-            new Charge(ChargeType.SCRATCH, 500, 0),
-            new Charge(ChargeType.DAY, 500, 0),
-            new Charge(ChargeType.OVERNIGHT, 250, 0)
+        List<TAX> newTAXs = List.of(
+            new TAX(TAXType."S", 500, 0),
+            new TAX(TAXType."D", 500, 0),
+            new TAX(TAXType."O", 250, 0)
         );
 
-        List<Charge> updatedCharges = ChargeCalculator.calculateCharges(trade, newCharges);
-        trade.setCharges(updatedCharges);
+        List<TAX> updatedTAXs = TAXCalculator.calculateTAXs(trade, newTAXs);
+        trade.setTAXs(updatedTAXs);
 
-        System.out.println("Initial Charges:");
-        trade.getCharges().forEach(System.out::println);
+        System.out.println("Initial TAXs:");
+        trade.getTAXs().forEach(System.out::println);
 
-        // Remove a charge (e.g., DAY charge) and rebalance
-        System.out.println("\nRemoving DAY Charge...");
-        List<Charge> afterRemoval = ChargeCalculator.handleChargeDeletion(trade, ChargeType.DAY);
-        trade.setCharges(afterRemoval);
+        // Remove a TAX (e.g., "D" TAX) and rebalance
+        System.out.println("\nRemoving "D" TAX...");
+        List<TAX> afterRemoval = TAXCalculator.handleTAXDeletion(trade, TAXType."D");
+        trade.setTAXs(afterRemoval);
 
-        System.out.println("Charges After Removal:");
-        trade.getCharges().forEach(System.out::println);
+        System.out.println("TAXs After Removal:");
+        trade.getTAXs().forEach(System.out::println);
     }
 }
 
@@ -409,30 +409,30 @@ Example Output
 
 Before Deletion:
 
-Initial Charges:
-Charge{type=SCRATCH, quantity=500, rate=0.8}
-Charge{type=DAY, quantity=500, rate=0.5}
-Charge{type=OVERNIGHT, quantity=250, rate=0.5}
+Initial TAXs:
+TAX{type="S", quantity=500, rate=0.8}
+TAX{type="D", quantity=500, rate=0.5}
+TAX{type="O", quantity=250, rate=0.5}
 
-After Removing DAY Charge:
+After Removing "D" TAX:
 
-Removing DAY Charge...
-Charges After Removal:
-Charge{type=SCRATCH, quantity=500, rate=0.8}
-Charge{type=OVERNIGHT, quantity=750, rate=0.5}
+Removing "D" TAX...
+TAXs After Removal:
+TAX{type="S", quantity=500, rate=0.8}
+TAX{type="O", quantity=750, rate=0.5}
 
 
 ---
 
 How This Works
 
-1. Charge is removed → We delete the DAY charge.
+1. TAX is removed → We delete the "D" TAX.
 
 
-2. Remaining quantity is redistributed → The OVERNIGHT charge now gets 750 instead of 250.
+2. Remaining quantity is redistributed → The "O" TAX now gets 750 instead of 250.
 
 
-3. Precedence is preserved → SCRATCH remains untouched.
+3. Precedence is preserved → "S" remains untouched.
 
 
 
@@ -441,22 +441,22 @@ How This Works
 
 Key Features in This Approach
 
-✅ Precedence Respected → Higher priority charges remain intact.
+✅ Precedence Respected → Higher priority TAXs remain intact.
 ✅ Volume Band Recalculation → Rates are dynamically applied.
-✅ Supports Multiple Deletions → The system can handle multiple charge removals efficiently.
+✅ Supports Multiple Deletions → The system can handle multiple TAX removals efficiently.
 
-This approach ensures the dynamic redistribution of charges while maintaining business rules and precedence.
+This approach ensures the dynamic redistribution of TAXs while maintaining business rules and precedence.
 
 
 ---
 
 Next Steps
 
-Database Persistence → Store recalculated charges persistently.
+Database Persistence → Store recalculated TAXs persistently.
 
 Concurrency Handling → Handle concurrent trade modifications safely.
 
-Logging and Auditing → Track charge removals and reassignments.
+Logging and Auditing → Track TAX removals and reassignments.
 
 
 
@@ -464,31 +464,31 @@ Logging and Auditing → Track charge removals and reassignments.
 
 Final Thoughts
 
-This solution ensures that when a charge is deleted, the system automatically redistributes the quantity while preserving precedence and volume bands.
+This solution ensures that when a TAX is deleted, the system automatically redistributes the quantity while preserving precedence and volume bands.
 
-Would you like further refinements, such as handling partial charge deletions? 🚀
+Would you like further refinements, such as handling partial TAX deletions? 🚀
 
 
 
-To solve this scenario in Java, we need to handle charge calculation based on precedence rules and volume bands. The key challenges are:
+To solve this scenario in Java, we need to handle TAX calculation based on precedence rules and volume bands. The key challenges are:
 
-Precedence Handling: Charges must be calculated in a specific order (e.g., scratch > day > overnight).
+Precedence Handling: TAXs must be calculated in a specific order (e.g., "S" > "D" > "O").
 
 Volume Bands: Rates depend on the quantity of the trade.
 
-Dynamic Updates: As new charges arrive, existing charges may need to be recalculated or reset.
+Dynamic Updates: As new TAXs arrive, existing TAXs may need to be recalculated or reset.
 
 Here’s a step-by-step solution:
 
 1. Define the Data Model
-Create Java classes to represent Trade, Charge, and ChargeType.
+Create Java classes to represent Trade, TAX, and TAXType.
 
 java
 Copy
 public class Trade {
     private String tradeId;
     private int totalQty;
-    private List<Charge> charges = new ArrayList<>();
+    private List<TAX> TAXs = new ArrayList<>();
 
     // Getters and setters
     public Trade(String tradeId, int totalQty) {
@@ -496,32 +496,32 @@ public class Trade {
         this.totalQty = totalQty;
     }
 
-    public void addCharge(Charge charge) {
-        charges.add(charge);
+    public void addTAX(TAX TAX) {
+        TAXs.add(TAX);
     }
 
-    public List<Charge> getCharges() {
-        return charges;
+    public List<TAX> getTAXs() {
+        return TAXs;
     }
 }
 
-public class Charge {
-    private String chargeId;
-    private ChargeType type;
+public class TAX {
+    private String TAXId;
+    private TAXType type;
     private int qty;
     private double rate;
 
     // Getters and setters
-    public Charge(String chargeId, ChargeType type, int qty, double rate) {
-        this.chargeId = chargeId;
+    public TAX(String TAXId, TAXType type, int qty, double rate) {
+        this.TAXId = TAXId;
         this.type = type;
         this.qty = qty;
         this.rate = rate;
     }
 }
 
-public enum ChargeType {
-    SCRATCH, DAY, OVERNIGHT
+public enum TAXType {
+    "S", "D", "O"
 }
 2. Define Volume Bands
 Create a class to represent VolumeBand and store the rates for each band.
@@ -545,61 +545,61 @@ public class VolumeBand {
     }
 }
 3. Define Precedence Rules
-Use a Comparator to sort charges by precedence.
+Use a Comparator to sort TAXs by precedence.
 
 java
 Copy
 import java.util.Comparator;
 
-public class ChargePrecedenceComparator implements Comparator<Charge> {
+public class TAXPrecedenceComparator implements Comparator<TAX> {
     @Override
-    public int compare(Charge c1, Charge c2) {
+    public int compare(TAX c1, TAX c2) {
         return Integer.compare(c1.getType().ordinal(), c2.getType().ordinal());
     }
 }
-4. Charge Calculation Logic
-Implement the logic to calculate charges based on precedence and volume bands.
+4. TAX Calculation Logic
+Implement the logic to calculate TAXs based on precedence and volume bands.
 
 java
 Copy
 import java.util.*;
 
-public class ChargeCalculator {
-    private Map<ChargeType, List<VolumeBand>> volumeBands;
+public class TAXCalculator {
+    private Map<TAXType, List<VolumeBand>> volumeBands;
 
-    public ChargeCalculator() {
+    public TAXCalculator() {
         volumeBands = new HashMap<>();
-        // Define volume bands for each charge type
-        volumeBands.put(ChargeType.SCRATCH, Arrays.asList(
+        // Define volume bands for each TAX type
+        volumeBands.put(TAXType."S", Arrays.asList(
             new VolumeBand(1, 100, 0.1),
             new VolumeBand(101, 1000, 0.2),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.3)
         ));
-        volumeBands.put(ChargeType.DAY, Arrays.asList(
+        volumeBands.put(TAXType."D", Arrays.asList(
             new VolumeBand(1, 100, 0.05),
             new VolumeBand(101, 1000, 0.1),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.15)
         ));
-        volumeBands.put(ChargeType.OVERNIGHT, Arrays.asList(
+        volumeBands.put(TAXType."O", Arrays.asList(
             new VolumeBand(1, 100, 0.02),
             new VolumeBand(101, 1000, 0.04),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.06)
         ));
     }
 
-    public void calculateCharges(Trade trade) {
-        // Sort charges by precedence
-        trade.getCharges().sort(new ChargePrecedenceComparator());
+    public void calculateTAXs(Trade trade) {
+        // Sort TAXs by precedence
+        trade.getTAXs().sort(new TAXPrecedenceComparator());
 
         int remainingQty = trade.getTotalQty();
 
-        for (Charge charge : trade.getCharges()) {
-            // Calculate charge based on volume bands
-            List<VolumeBand> bands = volumeBands.get(charge.getType());
+        for (TAX TAX : trade.getTAXs()) {
+            // Calculate TAX based on volume bands
+            List<VolumeBand> bands = volumeBands.get(TAX.getType());
             for (VolumeBand band : bands) {
                 if (band.matches(remainingQty)) {
-                    charge.setQty(remainingQty);
-                    charge.setRate(band.getRate());
+                    TAX.setQty(remainingQty);
+                    TAX.setRate(band.getRate());
                     remainingQty = 0; // All quantity is allocated
                     break;
                 }
@@ -608,25 +608,25 @@ public class ChargeCalculator {
     }
 }
 5. Handle Dynamic Updates
-When new charges arrive, reset the existing charges and recalculate.
+When new TAXs arrive, reset the existing TAXs and recalculate.
 
 java
 Copy
 public class TradeManager {
-    private ChargeCalculator chargeCalculator = new ChargeCalculator();
+    private TAXCalculator TAXCalculator = new TAXCalculator();
 
-    public void addCharge(Trade trade, Charge newCharge) {
-        // Reset existing charges
-        trade.getCharges().forEach(charge -> {
-            charge.setQty(0);
-            charge.setRate(0);
+    public void addTAX(Trade trade, TAX newTAX) {
+        // Reset existing TAXs
+        trade.getTAXs().forEach(TAX -> {
+            TAX.setQty(0);
+            TAX.setRate(0);
         });
 
-        // Add the new charge
-        trade.addCharge(newCharge);
+        // Add the new TAX
+        trade.addTAX(newTAX);
 
-        // Recalculate charges
-        chargeCalculator.calculateCharges(trade);
+        // Recalculate TAXs
+        TAXCalculator.calculateTAXs(trade);
     }
 }
 6. Example Usage
@@ -639,33 +639,33 @@ public class Main {
         // Create a trade with total quantity 1250
         Trade trade = new Trade("T123", 1250);
 
-        // Add charges (order doesn't matter, precedence will sort them)
-        trade.addCharge(new Charge("C1", ChargeType.DAY, 0, 0));
-        trade.addCharge(new Charge("C2", ChargeType.SCRATCH, 0, 0));
-        trade.addCharge(new Charge("C3", ChargeType.OVERNIGHT, 0, 0));
+        // Add TAXs (order doesn't matter, precedence will sort them)
+        trade.addTAX(new TAX("C1", TAXType."D", 0, 0));
+        trade.addTAX(new TAX("C2", TAXType."S", 0, 0));
+        trade.addTAX(new TAX("C3", TAXType."O", 0, 0));
 
-        // Calculate charges
-        ChargeCalculator calculator = new ChargeCalculator();
-        calculator.calculateCharges(trade);
+        // Calculate TAXs
+        TAXCalculator calculator = new TAXCalculator();
+        calculator.calculateTAXs(trade);
 
-        // Print charges
-        for (Charge charge : trade.getCharges()) {
-            System.out.println("Charge ID: " + charge.getChargeId() +
-                    ", Type: " + charge.getType() +
-                    ", Qty: " + charge.getQty() +
-                    ", Rate: " + charge.getRate());
+        // Print TAXs
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
         }
 
-        // Add a new charge dynamically
+        // Add a new TAX dynamically
         TradeManager manager = new TradeManager();
-        manager.addCharge(trade, new Charge("C4", ChargeType.SCRATCH, 0, 0));
+        manager.addTAX(trade, new TAX("C4", TAXType."S", 0, 0));
 
-        // Print updated charges
-        for (Charge charge : trade.getCharges()) {
-            System.out.println("Charge ID: " + charge.getChargeId() +
-                    ", Type: " + charge.getType() +
-                    ", Qty: " + charge.getQty() +
-                    ", Rate: " + charge.getRate());
+        // Print updated TAXs
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
         }
     }
 }
@@ -673,38 +673,38 @@ Output
 For a trade with total quantity 1250, the output will look like this:
 
 Copy
-Charge ID: C2, Type: SCRATCH, Qty: 1250, Rate: 0.3
-Charge ID: C1, Type: DAY, Qty: 0, Rate: 0.0
-Charge ID: C3, Type: OVERNIGHT, Qty: 0, Rate: 0.0
-After adding a new charge:
+TAX ID: C2, Type: "S", Qty: 1250, Rate: 0.3
+TAX ID: C1, Type: "D", Qty: 0, Rate: 0.0
+TAX ID: C3, Type: "O", Qty: 0, Rate: 0.0
+After adding a new TAX:
 
 Copy
-Charge ID: C2, Type: SCRATCH, Qty: 1250, Rate: 0.3
-Charge ID: C1, Type: DAY, Qty: 0, Rate: 0.0
-Charge ID: C3, Type: OVERNIGHT, Qty: 0, Rate: 0.0
-Charge ID: C4, Type: SCRATCH, Qty: 1250, Rate: 0.3
+TAX ID: C2, Type: "S", Qty: 1250, Rate: 0.3
+TAX ID: C1, Type: "D", Qty: 0, Rate: 0.0
+TAX ID: C3, Type: "O", Qty: 0, Rate: 0.0
+TAX ID: C4, Type: "S", Qty: 1250, Rate: 0.3
 Key Points
-Precedence Handling: Charges are sorted by precedence before calculation.
+Precedence Handling: TAXs are sorted by precedence before calculation.
 
 Volume Bands: Rates are determined based on the quantity and volume bands.
 
-Dynamic Updates: Existing charges are reset and recalculated when new charges are added.
+Dynamic Updates: Existing TAXs are reset and recalculated when new TAXs are added.
 
-This solution is scalable and can handle large volumes of trades and charges. Let me know if you need further enhancements!
+This solution is scalable and can handle large volumes of trades and TAXs. Let me know if you need further enhancements!
 
-There might be a. Charge deleted now how to handle that
-Handling charge deletion in the scenario requires updating the remaining charges and recalculating their quantities and rates based on the precedence rules and volume bands. Here's how you can handle charge deletion effectively:
+There might be a. TAX deleted now how to handle that
+Handling TAX deletion in the scenario requires updating the remaining TAXs and recalculating their quantities and rates based on the precedence rules and volume bands. Here's how you can handle TAX deletion effectively:
 
 Updated Solution
 1. Modify the Trade Class
-Add a method to remove a charge by its ID.
+Add a method to remove a TAX by its ID.
 
 java
 Copy
 public class Trade {
     private String tradeId;
     private int totalQty;
-    private List<Charge> charges = new ArrayList<>();
+    private List<TAX> TAXs = new ArrayList<>();
 
     // Getters and setters
     public Trade(String tradeId, int totalQty) {
@@ -712,59 +712,59 @@ public class Trade {
         this.totalQty = totalQty;
     }
 
-    public void addCharge(Charge charge) {
-        charges.add(charge);
+    public void addTAX(TAX TAX) {
+        TAXs.add(TAX);
     }
 
-    public void removeCharge(String chargeId) {
-        charges.removeIf(charge -> charge.getChargeId().equals(chargeId));
+    public void removeTAX(String TAXId) {
+        TAXs.removeIf(TAX -> TAX.getTAXId().equals(TAXId));
     }
 
-    public List<Charge> getCharges() {
-        return charges;
+    public List<TAX> getTAXs() {
+        return TAXs;
     }
 }
-2. Update the ChargeCalculator Class
-Modify the calculateCharges method to handle charge deletion and recalculate the remaining charges.
+2. Update the TAXCalculator Class
+Modify the calculateTAXs method to handle TAX deletion and recalculate the remaining TAXs.
 
 java
 Copy
-public class ChargeCalculator {
-    private Map<ChargeType, List<VolumeBand>> volumeBands;
+public class TAXCalculator {
+    private Map<TAXType, List<VolumeBand>> volumeBands;
 
-    public ChargeCalculator() {
+    public TAXCalculator() {
         volumeBands = new HashMap<>();
-        // Define volume bands for each charge type
-        volumeBands.put(ChargeType.SCRATCH, Arrays.asList(
+        // Define volume bands for each TAX type
+        volumeBands.put(TAXType."S", Arrays.asList(
             new VolumeBand(1, 100, 0.1),
             new VolumeBand(101, 1000, 0.2),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.3)
         ));
-        volumeBands.put(ChargeType.DAY, Arrays.asList(
+        volumeBands.put(TAXType."D", Arrays.asList(
             new VolumeBand(1, 100, 0.05),
             new VolumeBand(101, 1000, 0.1),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.15)
         ));
-        volumeBands.put(ChargeType.OVERNIGHT, Arrays.asList(
+        volumeBands.put(TAXType."O", Arrays.asList(
             new VolumeBand(1, 100, 0.02),
             new VolumeBand(101, 1000, 0.04),
             new VolumeBand(1001, Integer.MAX_VALUE, 0.06)
         ));
     }
 
-    public void calculateCharges(Trade trade) {
-        // Sort charges by precedence
-        trade.getCharges().sort(new ChargePrecedenceComparator());
+    public void calculateTAXs(Trade trade) {
+        // Sort TAXs by precedence
+        trade.getTAXs().sort(new TAXPrecedenceComparator());
 
         int remainingQty = trade.getTotalQty();
 
-        for (Charge charge : trade.getCharges()) {
-            // Calculate charge based on volume bands
-            List<VolumeBand> bands = volumeBands.get(charge.getType());
+        for (TAX TAX : trade.getTAXs()) {
+            // Calculate TAX based on volume bands
+            List<VolumeBand> bands = volumeBands.get(TAX.getType());
             for (VolumeBand band : bands) {
                 if (band.matches(remainingQty)) {
-                    charge.setQty(remainingQty);
-                    charge.setRate(band.getRate());
+                    TAX.setQty(remainingQty);
+                    TAX.setRate(band.getRate());
                     remainingQty = 0; // All quantity is allocated
                     break;
                 }
@@ -772,44 +772,44 @@ public class ChargeCalculator {
         }
     }
 }
-3. Handle Charge Deletion in TradeManager
-Add a method to delete a charge and recalculate the remaining charges.
+3. Handle TAX Deletion in TradeManager
+Add a method to delete a TAX and recalculate the remaining TAXs.
 
 java
 Copy
 public class TradeManager {
-    private ChargeCalculator chargeCalculator = new ChargeCalculator();
+    private TAXCalculator TAXCalculator = new TAXCalculator();
 
-    public void addCharge(Trade trade, Charge newCharge) {
-        // Reset existing charges
-        trade.getCharges().forEach(charge -> {
-            charge.setQty(0);
-            charge.setRate(0);
+    public void addTAX(Trade trade, TAX newTAX) {
+        // Reset existing TAXs
+        trade.getTAXs().forEach(TAX -> {
+            TAX.setQty(0);
+            TAX.setRate(0);
         });
 
-        // Add the new charge
-        trade.addCharge(newCharge);
+        // Add the new TAX
+        trade.addTAX(newTAX);
 
-        // Recalculate charges
-        chargeCalculator.calculateCharges(trade);
+        // Recalculate TAXs
+        TAXCalculator.calculateTAXs(trade);
     }
 
-    public void deleteCharge(Trade trade, String chargeId) {
-        // Remove the charge
-        trade.removeCharge(chargeId);
+    public void deleteTAX(Trade trade, String TAXId) {
+        // Remove the TAX
+        trade.removeTAX(TAXId);
 
-        // Reset remaining charges
-        trade.getCharges().forEach(charge -> {
-            charge.setQty(0);
-            charge.setRate(0);
+        // Reset remaining TAXs
+        trade.getTAXs().forEach(TAX -> {
+            TAX.setQty(0);
+            TAX.setRate(0);
         });
 
-        // Recalculate charges
-        chargeCalculator.calculateCharges(trade);
+        // Recalculate TAXs
+        TAXCalculator.calculateTAXs(trade);
     }
 }
 4. Example Usage
-Here’s how you can use the updated classes to handle charge deletion:
+Here’s how you can use the updated classes to handle TAX deletion:
 
 java
 Copy
@@ -818,81 +818,81 @@ public class Main {
         // Create a trade with total quantity 1250
         Trade trade = new Trade("T123", 1250);
 
-        // Add charges (order doesn't matter, precedence will sort them)
-        trade.addCharge(new Charge("C1", ChargeType.DAY, 0, 0));
-        trade.addCharge(new Charge("C2", ChargeType.SCRATCH, 0, 0));
-        trade.addCharge(new Charge("C3", ChargeType.OVERNIGHT, 0, 0));
+        // Add TAXs (order doesn't matter, precedence will sort them)
+        trade.addTAX(new TAX("C1", TAXType."D", 0, 0));
+        trade.addTAX(new TAX("C2", TAXType."S", 0, 0));
+        trade.addTAX(new TAX("C3", TAXType."O", 0, 0));
 
-        // Calculate charges
-        ChargeCalculator calculator = new ChargeCalculator();
-        calculator.calculateCharges(trade);
+        // Calculate TAXs
+        TAXCalculator calculator = new TAXCalculator();
+        calculator.calculateTAXs(trade);
 
-        // Print charges
-        System.out.println("Initial Charges:");
-        for (Charge charge : trade.getCharges()) {
-            System.out.println("Charge ID: " + charge.getChargeId() +
-                    ", Type: " + charge.getType() +
-                    ", Qty: " + charge.getQty() +
-                    ", Rate: " + charge.getRate());
+        // Print TAXs
+        System.out.println("Initial TAXs:");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
         }
 
-        // Delete a charge
+        // Delete a TAX
         TradeManager manager = new TradeManager();
-        manager.deleteCharge(trade, "C2"); // Delete the SCRATCH charge
+        manager.deleteTAX(trade, "C2"); // Delete the "S" TAX
 
-        // Print updated charges
-        System.out.println("\nCharges after deletion:");
-        for (Charge charge : trade.getCharges()) {
-            System.out.println("Charge ID: " + charge.getChargeId() +
-                    ", Type: " + charge.getType() +
-                    ", Qty: " + charge.getQty() +
-                    ", Rate: " + charge.getRate());
+        // Print updated TAXs
+        System.out.println("\nTAXs after deletion:");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
         }
     }
 }
 Output
 For a trade with total quantity 1250, the output will look like this:
 
-Initial Charges:
+Initial TAXs:
 Copy
-Charge ID: C2, Type: SCRATCH, Qty: 1250, Rate: 0.3
-Charge ID: C1, Type: DAY, Qty: 0, Rate: 0.0
-Charge ID: C3, Type: OVERNIGHT, Qty: 0, Rate: 0.0
-Charges after Deletion:
+TAX ID: C2, Type: "S", Qty: 1250, Rate: 0.3
+TAX ID: C1, Type: "D", Qty: 0, Rate: 0.0
+TAX ID: C3, Type: "O", Qty: 0, Rate: 0.0
+TAXs after Deletion:
 Copy
-Charge ID: C1, Type: DAY, Qty: 1250, Rate: 0.15
-Charge ID: C3, Type: OVERNIGHT, Qty: 0, Rate: 0.0
+TAX ID: C1, Type: "D", Qty: 1250, Rate: 0.15
+TAX ID: C3, Type: "O", Qty: 0, Rate: 0.0
 Explanation
 Initial Calculation:
 
-The SCRATCH charge (C2) takes the entire quantity (1250) because it has the highest precedence.
+The "S" TAX (C2) takes the entire quantity (1250) because it has the highest precedence.
 
-The DAY and OVERNIGHT charges get 0 quantity.
+The "D" and "O" TAXs get 0 quantity.
 
 After Deletion:
 
-The SCRATCH charge (C2) is deleted.
+The "S" TAX (C2) is deleted.
 
-The DAY charge (C1) now takes the entire quantity (1250) because it has the next highest precedence.
+The "D" TAX (C1) now takes the entire quantity (1250) because it has the next highest precedence.
 
-The OVERNIGHT charge (C3) still gets 0 quantity.
+The "O" TAX (C3) still gets 0 quantity.
 
 Key Points
-Charge Deletion:
+TAX Deletion:
 
-Remove the charge from the trade.
+Remove the TAX from the trade.
 
-Reset the remaining charges.
+Reset the remaining TAXs.
 
-Recalculate the charges based on precedence and volume bands.
+Recalculate the TAXs based on precedence and volume bands.
 
 Dynamic Updates:
 
-The system dynamically adjusts charges when a charge is added or deleted.
+The system dynamically adjusts TAXs when a TAX is added or deleted.
 
 Scalability:
 
-This solution can handle large volumes of trades and charges efficiently.
+This solution can handle large volumes of trades and TAXs efficiently.
 
 Let me know if you need further enhancements or have additional requirements!
 
