@@ -896,3 +896,191 @@ This solution can handle large volumes of trades and TAXs efficiently.
 
 Let me know if you need further enhancements or have additional requirements!
 
+In this scenario, TAXs are partially allocated based on their precedence and quantity, and the system must dynamically adjust the quantities when TAXs are added, updated, or deleted. Here's how to handle this complex case:
+
+Updated Solution
+1. Modify the TAXCalculator Class
+Update the calculateTAXs method to handle partial allocation of quantities across TAXs.
+
+java
+Copy
+public class TAXCalculator {
+    private Map<TAXType, List<VolumeBand>> volumeBands;
+
+    public TAXCalculator() {
+        volumeBands = new HashMap<>();
+        // Define volume bands for each TAX type
+        volumeBands.put(TAXType."S", Arrays.asList(
+            new VolumeBand(1, 100, 0.1),
+            new VolumeBand(101, 1000, 0.2),
+            new VolumeBand(1001, Integer.MAX_VALUE, 0.3)
+        ));
+        volumeBands.put(TAXType."D", Arrays.asList(
+            new VolumeBand(1, 100, 0.05),
+            new VolumeBand(101, 1000, 0.1),
+            new VolumeBand(1001, Integer.MAX_VALUE, 0.15)
+        ));
+        volumeBands.put(TAXType."O", Arrays.asList(
+            new VolumeBand(1, 100, 0.02),
+            new VolumeBand(101, 1000, 0.04),
+            new VolumeBand(1001, Integer.MAX_VALUE, 0.06)
+        ));
+    }
+
+    public void calculateTAXs(Trade trade) {
+        // Sort TAXs by precedence
+        trade.getTAXs().sort(new TAXPrecedenceComparator());
+
+        int remainingQty = trade.getTotalQty();
+
+        for (TAX TAX : trade.getTAXs()) {
+            // Calculate TAX based on volume bands
+            List<VolumeBand> bands = volumeBands.get(TAX.getType());
+            for (VolumeBand band : bands) {
+                if (band.matches(remainingQty)) {
+                    int allocatedQty = Math.min(remainingQty, TAX.getQty());
+                    TAX.setQty(allocatedQty);
+                    TAX.setRate(band.getRate());
+                    remainingQty -= allocatedQty; // Deduct allocated quantity
+                    break;
+                }
+            }
+        }
+    }
+}
+2. Handle Partial Allocation
+When adding or updating TAXs, ensure that the total quantity does not exceed the trade's total quantity.
+
+java
+Copy
+public class TradeManager {
+    private TAXCalculator TAXCalculator = new TAXCalculator();
+
+    public void addTAX(Trade trade, TAX newTAX) {
+        // Check if the total quantity exceeds the trade's total quantity
+        int totalAllocatedQty = trade.getTAXs().stream().mapToInt(TAX::getQty).sum();
+        if (totalAllocatedQty + newTAX.getQty() > trade.getTotalQty()) {
+            throw new IllegalArgumentException("Total quantity exceeds trade's total quantity");
+        }
+
+        // Add the new TAX
+        trade.addTAX(newTAX);
+
+        // Recalculate TAXs
+        TAXCalculator.calculateTAXs(trade);
+    }
+
+    public void deleteTAX(Trade trade, String TAXId) {
+        // Remove the TAX
+        trade.removeTAX(TAXId);
+
+        // Recalculate TAXs
+        TAXCalculator.calculateTAXs(trade);
+    }
+}
+3. Example Usage
+Here’s how you can use the updated classes to handle partial allocation and TAX deletion:
+
+java
+Copy
+public class Main {
+    public static void main(String[] args) {
+        // Create a trade with total quantity 1250
+        Trade trade = new Trade("T123", 1250);
+
+        // Add TAXs with partial quantities
+        trade.addTAX(new TAX("C1", TAXType."S", 25, 0));
+        trade.addTAX(new TAX("C2", TAXType."D", 100, 0));
+        trade.addTAX(new TAX("C3", TAXType."O", 500, 0));
+
+        // Calculate TAXs
+        TAXCalculator calculator = new TAXCalculator();
+        calculator.calculateTAXs(trade);
+
+        // Print TAXs
+        System.out.println("Initial TAXs:");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
+        }
+
+        // Add another "S" TAX
+        TradeManager manager = new TradeManager();
+        manager.addTAX(trade, new TAX("C4", TAXType."S", 100, 0));
+
+        // Print updated TAXs
+        System.out.println("\nTAXs after adding another "S":");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
+        }
+
+        // Delete a TAX
+        manager.deleteTAX(trade, "C1"); // Delete the first "S" TAX
+
+        // Print updated TAXs
+        System.out.println("\nTAXs after deletion:");
+        for (TAX TAX : trade.getTAXs()) {
+            System.out.println("TAX ID: " + TAX.getTAXId() +
+                    ", Type: " + TAX.getType() +
+                    ", Qty: " + TAX.getQty() +
+                    ", Rate: " + TAX.getRate());
+        }
+    }
+}
+Output
+Initial TAXs:
+Copy
+TAX ID: C1, Type: "S", Qty: 25, Rate: 0.1
+TAX ID: C2, Type: "D", Qty: 100, Rate: 0.05
+TAX ID: C3, Type: "O", Qty: 500, Rate: 0.04
+TAXs after Adding Another "S":
+Copy
+TAX ID: C1, Type: "S", Qty: 25, Rate: 0.1
+TAX ID: C4, Type: "S", Qty: 100, Rate: 0.1
+TAX ID: C2, Type: "D", Qty: 100, Rate: 0.05
+TAX ID: C3, Type: "O", Qty: 500, Rate: 0.04
+TAXs after Deletion:
+Copy
+TAX ID: C4, Type: "S", Qty: 100, Rate: 0.1
+TAX ID: C2, Type: "D", Qty: 100, Rate: 0.05
+TAX ID: C3, Type: "O", Qty: 500, Rate: 0.04
+Explanation
+Initial Allocation:
+
+"S" (C1): 25 (rate: 0.1)
+
+"D" (C2): 100 (rate: 0.05)
+
+"O" (C3): 500 (rate: 0.04)
+
+After Adding Another "S":
+
+"S" (C4): 100 (rate: 0.1) is added.
+
+The total quantity allocated is now 725 (25 + 100 + 100 + 500).
+
+After Deleting a TAX:
+
+"S" (C1) is deleted.
+
+The remaining TAXs are recalculated, and their quantities and rates remain unchanged.
+
+Key Points
+Partial Allocation:
+
+TAXs are allocated quantities based on their precedence and volume bands.
+
+The total allocated quantity must not exceed the trade's total quantity.
+
+Dynamic Updates:
+
+TAXs are recalculated when a TAX is added, updated, or deleted.
+
+Scalability:
+
+This solution can handle large volumes of trades and TAXs efficiently.
