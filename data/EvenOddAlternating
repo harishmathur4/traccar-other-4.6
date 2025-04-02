@@ -1,0 +1,50 @@
+package com.tester.twopointers;
+
+import java.util.Arrays;
+
+public class EvenOddAlternating {
+
+    public static void main(String[] args) {
+        int[] arr = {777,888,3, 1, 8, 5, 2, 6, 7, 4, 9, 10}; // Example input
+        arrangeEvenOdd(arr);
+        System.out.println(Arrays.toString(arr));
+    }
+
+    public static void arrangeEvenOdd(int[] arr) {
+        int n = arr.length;
+        int evenIndex = 0, oddIndex = 1;
+
+        while (evenIndex < n && oddIndex < n) {
+            // Find the first misplaced even number
+            while (isInArrayBounds(evenIndex, n) && isNumberAtEvenIndexAlreadyEven(arr[evenIndex]) == 0)
+                evenIndex += 2;//moves to next even
+            // Find the first misplaced odd number
+            while (isInArrayBounds(oddIndex ,n) && isNumberAtOddIndexAlreadyOdd(arr[oddIndex]) == 1)
+                oddIndex += 2;//moves to next odd
+
+            swapAsNumbersAreAtIncorrectIndexs(arr, evenIndex, n, oddIndex);
+        }
+    }
+
+    private static void swapAsNumbersAreAtIncorrectIndexs(int[] arr, int evenIndex, int n, int oddIndex) {
+        // Swap them if within bounds
+        if (evenIndex < n && oddIndex < n) {
+            int temp = arr[evenIndex];
+            arr[evenIndex] = arr[oddIndex];
+            arr[oddIndex] = temp;
+        }
+    }
+
+    private static int isNumberAtOddIndexAlreadyOdd(int arr) {
+        return arr % 2;
+    }
+
+
+    private static int isNumberAtEvenIndexAlreadyEven(int arr) {
+        return arr % 2;
+    }
+
+    private static boolean isInArrayBounds(int evenIndex, int n) {
+        return evenIndex < n;
+    }
+}
