@@ -1,0 +1,143 @@
+Tricky Trade Problem: Trade Order Matching with Price Limits
+Scenario:
+You are building a trade matching system where buy and sell orders are matched based on price and quantity. However, there are special conditions:
+
+Price Limits: Each trade has a minimum and maximum price. If an incoming order violates these, it is either rejected or adjusted.
+
+Matching Logic: A buy order is matched with the lowest-priced sell order available, and a sell order is matched with the highest-priced buy order.
+
+Processing Mode: The system has two modes:
+
+Normal Mode: Matches trades using a FIFO approach.
+
+Optimized Mode: Uses a priority queue to optimize order matching.
+
+Solution Using Two Design Patterns
+Strategy Pattern – To handle different order processing strategies (Normal vs. Optimized).
+
+Factory Pattern – To create the correct processing strategy dynamically based on system mode.
+
+Java Implementation
+java
+Copy
+Edit
+import java.util.*;
+
+interface TradeProcessor {
+    void processOrder(TradeOrder order);
+}
+
+class NormalTradeProcessor implements TradeProcessor {
+    private Queue<TradeOrder> buyOrders = new LinkedList<>();
+    private Queue<TradeOrder> sellOrders = new LinkedList<>();
+
+    @Override
+    public void processOrder(TradeOrder order) {
+        if (order.getType() == TradeOrderType.BUY) {
+            matchTrade(order, sellOrders);
+            if (order.getQuantity() > 0) buyOrders.add(order);
+        } else {
+            matchTrade(order, buyOrders);
+            if (order.getQuantity() > 0) sellOrders.add(order);
+        }
+    }
+
+    private void matchTrade(TradeOrder order, Queue<TradeOrder> oppositeOrders) {
+        while (!oppositeOrders.isEmpty() && order.getQuantity() > 0) {
+            TradeOrder match = oppositeOrders.peek();
+            if (match.getPrice() <= order.getPrice()) {
+                int tradedQuantity = Math.min(order.getQuantity(), match.getQuantity());
+                order.reduceQuantity(tradedQuantity);
+                match.reduceQuantity(tradedQuantity);
+                if (match.getQuantity() == 0) oppositeOrders.poll();
+                System.out.println("Matched: " + order + " with " + match);
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+class OptimizedTradeProcessor implements TradeProcessor {
+    private PriorityQueue<TradeOrder> buyOrders = new PriorityQueue<>(Comparator.comparing(TradeOrder::getPrice).reversed());
+    private PriorityQueue<TradeOrder> sellOrders = new PriorityQueue<>(Comparator.comparing(TradeOrder::getPrice));
+
+    @Override
+    public void processOrder(TradeOrder order) {
+        if (order.getType() == TradeOrderType.BUY) {
+            matchTrade(order, sellOrders);
+            if (order.getQuantity() > 0) buyOrders.add(order);
+        } else {
+            matchTrade(order, buyOrders);
+            if (order.getQuantity() > 0) sellOrders.add(order);
+        }
+    }
+
+    private void matchTrade(TradeOrder order, PriorityQueue<TradeOrder> oppositeOrders) {
+        while (!oppositeOrders.isEmpty() && order.getQuantity() > 0) {
+            TradeOrder match = oppositeOrders.peek();
+            if (match.getPrice() <= order.getPrice()) {
+                int tradedQuantity = Math.min(order.getQuantity(), match.getQuantity());
+                order.reduceQuantity(tradedQuantity);
+                match.reduceQuantity(tradedQuantity);
+                if (match.getQuantity() == 0) oppositeOrders.poll();
+                System.out.println("Matched: " + order + " with " + match);
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+// Factory Pattern for Creating TradeProcessor
+class TradeProcessorFactory {
+    public static TradeProcessor createProcessor(boolean optimizedMode) {
+        return optimizedMode ? new OptimizedTradeProcessor() : new NormalTradeProcessor();
+    }
+}
+
+// Trade Order Class
+class TradeOrder {
+    private final TradeOrderType type;
+    private final double price;
+    private int quantity;
+
+    public TradeOrder(TradeOrderType type, double price, int quantity) {
+        this.type = type;
+        this.price = price;
+        this.quantity = quantity;
+    }
+
+    public TradeOrderType getType() { return type; }
+    public double getPrice() { return price; }
+    public int getQuantity() { return quantity; }
+    public void reduceQuantity(int amount) { this.quantity -= amount; }
+
+    @Override
+    public String toString() {
+        return type + " Order: Price=" + price + ", Quantity=" + quantity;
+    }
+}
+
+enum TradeOrderType { BUY, SELL; }
+
+// Main Class to Test
+public class TradeMatchingSystem {
+    public static void main(String[] args) {
+        boolean optimizedMode = true; // Toggle between Normal and Optimized modes
+
+        TradeProcessor processor = TradeProcessorFactory.createProcessor(optimizedMode);
+
+        processor.processOrder(new TradeOrder(TradeOrderType.BUY, 105, 10));
+        processor.processOrder(new TradeOrder(TradeOrderType.SELL, 100, 5));
+        processor.processOrder(new TradeOrder(TradeOrderType.SELL, 103, 10));
+        processor.processOrder(new TradeOrder(TradeOrderType.BUY, 107, 8));
+    }
+}
+Key Takeaways
+✅ Strategy Pattern allows switching between normal and optimized trade processing.
+✅ Factory Pattern dynamically selects the appropriate strategy at runtime.
+✅ Efficient Matching via FIFO queue (normal) or priority queue (optimized).
+✅ Scalability: Can easily extend with new processing strategies.
+
+Would you like enhancements, such as order expiration handling or better logging? 
